@@ -4,33 +4,38 @@ namespace App\Traits;
 
 use Illuminate\Http\JsonResponse;
 
+/**
+ * Base response for every API endpoint:
+ *
+ *   { "code": 1 | -1, "message": string, "result": mixed }
+ *
+ *  - code  1 → success, -1 → error (the HTTP status code is still set accordingly)
+ *  - result → payload on success; on validation errors, the field → messages map; otherwise null
+ */
 trait ApiResponse
 {
-    protected function success(mixed $data = null, string $message = 'OK', int $code = 200): JsonResponse
+    private function body(int $code, string $message, mixed $result = null): array
     {
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data'    => $data,
-            'errors'  => null,
+        return [
             'code'    => $code,
-        ], $code);
+            'message' => $message,
+            'result'  => $result,
+        ];
     }
 
-    protected function created(mixed $data = null, string $message = 'Creado exitosamente'): JsonResponse
+    protected function success(mixed $result = null, string $message = 'OK', int $status = 200): JsonResponse
     {
-        return $this->success($data, $message, 201);
+        return response()->json($this->body(1, $message, $result), $status);
     }
 
-    protected function error(string $message = 'Error', mixed $errors = null, int $code = 400): JsonResponse
+    protected function created(mixed $result = null, string $message = 'Creado exitosamente'): JsonResponse
     {
-        return response()->json([
-            'success' => false,
-            'message' => $message,
-            'data'    => null,
-            'errors'  => $errors,
-            'code'    => $code,
-        ], $code);
+        return $this->success($result, $message, 201);
+    }
+
+    protected function error(string $message = 'Error', mixed $result = null, int $status = 400): JsonResponse
+    {
+        return response()->json($this->body(-1, $message, $result), $status);
     }
 
     protected function unauthorized(string $message = 'No autorizado'): JsonResponse

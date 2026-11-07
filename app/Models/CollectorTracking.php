@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CollectorTracking extends Model
 {
+    protected $table = 'collector_tracking';
+
     protected $fillable = [
         'collector_id',
         'route_id',

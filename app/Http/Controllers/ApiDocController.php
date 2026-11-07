@@ -43,11 +43,10 @@ namespace App\Http\Controllers;
  *
  * @OA\Schema(
  *     schema="ApiResponse",
- *     @OA\Property(property="success", type="boolean", example=true),
+ *     description="Respuesta base de todos los endpoints",
+ *     @OA\Property(property="code",    type="integer", enum={1,-1}, example=1, description="1 = éxito, -1 = error"),
  *     @OA\Property(property="message", type="string",  example="OK"),
- *     @OA\Property(property="data",    nullable=true),
- *     @OA\Property(property="errors",  nullable=true),
- *     @OA\Property(property="code",    type="integer", example=200)
+ *     @OA\Property(property="result",  nullable=true)
  * )
  *
  * @OA\Schema(
@@ -111,13 +110,11 @@ namespace App\Http\Controllers;
  *
  * @OA\Schema(
  *     schema="ValidationError",
- *     @OA\Property(property="success", type="boolean", example=false),
+ *     @OA\Property(property="code",    type="integer", example=-1),
  *     @OA\Property(property="message", type="string",  example="Error de validación"),
- *     @OA\Property(property="data",    nullable=true,  example=null),
- *     @OA\Property(property="errors",  type="object",
+ *     @OA\Property(property="result",  type="object",
  *         @OA\Property(property="field", type="array", @OA\Items(type="string", example="El campo es obligatorio."))
- *     ),
- *     @OA\Property(property="code", type="integer", example=422)
+ *     )
  * )
  */
 class ApiDocController {}

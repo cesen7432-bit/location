@@ -45,9 +45,9 @@ class ApiKeyMiddleware
 
         $request->attributes->set('api_key', $apiKey);
 
-        if ($apiKey->collector) {
-            $request->setUserResolver(fn () => $apiKey->collector);
-        }
+        // The "user" of an API-key request is always the key's collector (or null),
+        // never whatever another guard might resolve.
+        $request->setUserResolver(fn () => $apiKey->collector);
 
         return $next($request);
     }

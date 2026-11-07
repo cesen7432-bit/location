@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Broadcasting\CecomBroadcaster;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Custom broadcast driver: BROADCAST_CONNECTION=cecom
+        Broadcast::extend('cecom', fn ($app, array $config) => new CecomBroadcaster($config));
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Schedule;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class RouteController extends Controller
 {
@@ -86,10 +87,10 @@ class RouteController extends Controller
             'zone'               => 'nullable|string|max:100',
             'active'             => 'boolean',
             'neighborhood_ids'   => 'sometimes|array|min:1',
-            'neighborhood_ids.*' => 'exists:neighborhoods,id',
+            'neighborhood_ids.*' => 'distinct|exists:neighborhoods,id',
         ]);
 
-        $route = Route::create($data);
+        $route = Route::create($data)->refresh();
 
         if (!empty($data['neighborhood_ids'])) {
             $points = array_map(
@@ -219,7 +220,7 @@ class RouteController extends Controller
     public function storePoint(Request $request, Route $route): JsonResponse
     {
         $data = $request->validate([
-            'neighborhood_id' => 'required|exists:neighborhoods,id',
+            'neighborhood_id' => ['required', 'exists:neighborhoods,id', Rule::unique('route_points')->where('route_id', $route->id)],
             'sequence'        => 'required|integer|min:1',
             'notes'           => 'nullable|string',
         ]);
@@ -258,7 +259,7 @@ class RouteController extends Controller
         abort_if($point->route_id !== $route->id, 404);
 
         $data = $request->validate([
-            'neighborhood_id' => 'sometimes|exists:neighborhoods,id',
+            'neighborhood_id' => ['sometimes', 'exists:neighborhoods,id', Rule::unique('route_points')->where('route_id', $route->id)->ignore($point->id)],
             'sequence'        => 'sometimes|integer|min:1',
             'notes'           => 'nullable|string',
         ]);
@@ -319,7 +320,7 @@ class RouteController extends Controller
     {
         $data = $request->validate([
             'neighborhood_ids'   => 'required|array|min:1',
-            'neighborhood_ids.*' => 'exists:neighborhoods,id',
+            'neighborhood_ids.*' => 'distinct|exists:neighborhoods,id',
         ]);
 
         $route->points()->delete();

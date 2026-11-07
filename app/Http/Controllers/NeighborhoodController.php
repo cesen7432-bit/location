@@ -101,7 +101,7 @@ class NeighborhoodController extends Controller
             'active'       => 'boolean',
         ]);
 
-        $neighborhood = Neighborhood::create($data);
+        $neighborhood = Neighborhood::create($data)->refresh();
 
         return $this->created($neighborhood, 'Barrio creado exitosamente');
     }
@@ -250,7 +250,7 @@ class NeighborhoodController extends Controller
 
         $created = \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
             return collect($data['neighborhoods'])->map(
-                fn ($n) => Neighborhood::create(array_merge($n, ['active' => true]))
+                fn ($n) => Neighborhood::create(array_merge($n, ['active' => true]))->refresh()
             );
         });
 

@@ -69,6 +69,15 @@ return [
             'key' => env('ABLY_KEY'),
         ],
 
+        'cecom' => [
+            'driver'  => 'cecom',
+            'url'     => env('CECOM_URL', 'https://apps-cecom.cloud'),
+            'app_id'  => env('CECOM_APP_ID'),
+            'key'     => env('CECOM_APP_KEY'),
+            'secret'  => env('CECOM_APP_SECRET'),
+            'timeout' => env('CECOM_TIMEOUT', 5),
+        ],
+
         'log' => [
             'driver' => 'log',
         ],
