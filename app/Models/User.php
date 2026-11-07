@@ -65,6 +65,11 @@ class User extends Authenticatable
         return $this->hasMany(CollectorTracking::class, 'collector_id');
     }
 
+    public function apiKeys(): HasMany
+    {
+        return $this->hasMany(ApiKey::class, 'collector_id');
+    }
+
     public function sessions(): HasMany
     {
         return $this->hasMany(CollectorSession::class, 'collector_id');

@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CollectorController;
+use App\Http\Controllers\CollectorUserController;
 use App\Http\Controllers\NeighborhoodController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\RouteController;
@@ -104,6 +105,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     });
 
     // --- Collector management ---
+    // Collector users (role = collector); their id is the collector_id used everywhere
+    Route::apiResource('collectors', CollectorUserController::class);
     Route::post('collector/assign-route', [CollectorController::class, 'assignRoute']);
     Route::get('collector/{collectorId}/routes', [CollectorController::class, 'collectorRoutes']);
 

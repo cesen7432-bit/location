@@ -34,6 +34,7 @@ namespace App\Http\Controllers;
  * @OA\Tag(name="Neighborhoods", description="Catálogo de barrios (admin)")
  * @OA\Tag(name="Routes",        description="Gestión de rutas GPS (admin)")
  * @OA\Tag(name="Schedules",     description="Horarios semanales por ruta (admin)")
+ * @OA\Tag(name="Collectors",    description="Gestión de usuarios recolectores (admin)")
  * @OA\Tag(name="ApiKeys",       description="Gestión de API keys para dispositivos (admin)")
  * @OA\Tag(name="Tracking",      description="Reportes y seguimiento de recolectores (admin)")
  *
