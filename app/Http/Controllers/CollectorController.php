@@ -27,7 +27,7 @@ class CollectorController extends Controller
      *     path="/api/collector/ping",
      *     tags={"Collector"},
      *     summary="Enviar ping GPS",
-     *     description="Autenticado con header X-API-Key. Si la key no esta asociada a un recolector, se debe enviar collector_id. Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Emite WebSocket solo si se movio >15 m o pasaron >10 s desde el ultimo broadcast.",
+     *     description="Autenticado con header X-API-Key. Si la key no esta asociada a un recolector, se debe enviar collector_id. Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Cada ping guardado se emite por WebSocket (canal collectors.live, evento location.updated). broadcast=false indica que el ping se guardo pero el envio fallo.",
      *     operationId="collectorPing",
      *     security={{"apiKey":{}}},
      *     @OA\RequestBody(required=true,
@@ -58,8 +58,7 @@ class CollectorController extends Controller
      * Receive a raw GPS ping from the collector.
      * - Persists every single ping to collector_tracking (breadcrumb log).
      * - Updates collector_sessions (current state, fast reads).
-     * - Broadcasts via WebSocket only if the collector moved enough OR enough
-     *   time has passed since the last broadcast (throttle to avoid congestion).
+     * - Broadcasts every saved ping via WebSocket (apps-cecom.cloud), synchronously.
      */
     public function ping(Request $request): JsonResponse
     {
@@ -115,39 +114,36 @@ class CollectorController extends Controller
             $session->saveQuietly();
         }
 
-        // 3. Throttle: broadcast only when the collector has moved enough OR
-        //    enough time has passed — prevents flooding Reverb with every ping.
-        $shouldBroadcast = $this->simplifier->shouldBroadcast(
-            newLat: $data['latitude'],
-            newLng: $data['longitude'],
-            lastLat: $session->last_broadcast_lat,
-            lastLng: $session->last_broadcast_lng,
-            lastBroadcastAt: $session->last_broadcast_at,
-            distanceThresholdMeters: 15.0,
-            timeThresholdSeconds: 10,
-        );
+        // 3. Broadcast every saved ping, synchronously (no queue worker needed).
+        //    A WebSocket failure must never lose the ping: it is already saved,
+        //    so the error is only logged and reported as broadcast=false.
+        $broadcasted = false;
 
-        if ($shouldBroadcast) {
+        try {
+            broadcast(new CollectorLocationUpdated([
+                'collector_id'   => $collector->id,
+                'collector_name' => $collector->name,
+                'route_id'       => (int) $data['route_id'],
+                'latitude'       => (float) $data['latitude'],
+                'longitude'      => (float) $data['longitude'],
+                'status'         => $session->status,
+                'last_seen_at'   => $now->toIso8601String(),
+            ]));
+
+            $broadcasted = true;
+
             $session->update([
                 'last_broadcast_lat' => $data['latitude'],
                 'last_broadcast_lng' => $data['longitude'],
                 'last_broadcast_at'  => $now,
             ]);
-
-            broadcast(new CollectorLocationUpdated([
-                'collector_id'   => $collector->id,
-                'collector_name' => $collector->name,
-                'route_id'       => $data['route_id'],
-                'latitude'       => $data['latitude'],
-                'longitude'      => $data['longitude'],
-                'status'         => $session->status,
-                'last_seen_at'   => $now->toIso8601String(),
-            ]));
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         return $this->success([
             'recorded'   => true,
-            'broadcast'  => $shouldBroadcast,
+            'broadcast'  => $broadcasted,
             'session_id' => $session->id,
         ], 'Ping registrado');
     }
