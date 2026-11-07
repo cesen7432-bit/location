@@ -5,6 +5,14 @@
 
     RewriteEngine On
 
+    # Force HTTPS in production, EXCEPT the GPS ping endpoint
+    # (some GPS devices can only send plain HTTP and don't follow redirects on POST)
+    RewriteCond %{HTTP_HOST} ^seguimiento\.softsen\.space$ [NC]
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteCond %{REQUEST_URI} !/api/collector/ping$
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
