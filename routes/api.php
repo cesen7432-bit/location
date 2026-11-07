@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CollectorController;
 use App\Http\Controllers\NeighborhoodController;
@@ -53,8 +54,16 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'role:collector,admin'])->prefix('collector')->group(function () {
-    Route::post('ping', [CollectorController::class, 'ping']);
     Route::get('my-routes', [CollectorController::class, 'myRoutes']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Device routes — authenticated with X-API-Key header
+|--------------------------------------------------------------------------
+*/
+Route::middleware('api.key')->prefix('collector')->group(function () {
+    Route::post('ping', [CollectorController::class, 'ping']);
 });
 
 /*
@@ -63,6 +72,10 @@ Route::middleware(['auth:sanctum', 'role:collector,admin'])->prefix('collector')
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+
+    // --- API keys (device authentication) ---
+    Route::apiResource('api-keys', ApiKeyController::class)->parameters(['api-keys' => 'apiKey']);
+    Route::post('api-keys/{apiKey}/regenerate', [ApiKeyController::class, 'regenerate']);
 
     // --- Neighborhood catalog ---
     Route::apiResource('neighborhoods', NeighborhoodController::class);

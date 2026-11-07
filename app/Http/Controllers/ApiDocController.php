@@ -20,12 +20,21 @@ namespace App\Http\Controllers;
  *     description="Token Sanctum. Obtenerlo en POST /api/auth/login"
  * )
  *
+ * @OA\SecurityScheme(
+ *     securityScheme="apiKey",
+ *     type="apiKey",
+ *     in="header",
+ *     name="X-API-Key",
+ *     description="API key de dispositivo. Crearla en POST /api/admin/api-keys"
+ * )
+ *
  * @OA\Tag(name="Auth",          description="Autenticación y sesión")
  * @OA\Tag(name="Public",        description="Endpoints sin autenticación — horarios y tracking live")
  * @OA\Tag(name="Collector",     description="Endpoints para recolectores autenticados")
  * @OA\Tag(name="Neighborhoods", description="Catálogo de barrios (admin)")
  * @OA\Tag(name="Routes",        description="Gestión de rutas GPS (admin)")
  * @OA\Tag(name="Schedules",     description="Horarios semanales por ruta (admin)")
+ * @OA\Tag(name="ApiKeys",       description="Gestión de API keys para dispositivos (admin)")
  * @OA\Tag(name="Tracking",      description="Reportes y seguimiento de recolectores (admin)")
  *
  * -----------------------------------------------------------------------

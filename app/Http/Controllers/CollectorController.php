@@ -27,13 +27,14 @@ class CollectorController extends Controller
      *     path="/api/collector/ping",
      *     tags={"Collector"},
      *     summary="Enviar ping GPS",
-     *     description="Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Emite WebSocket solo si se movio >15 m o pasaron >10 s desde el ultimo broadcast.",
+     *     description="Autenticado con header X-API-Key. Si la key no esta asociada a un recolector, se debe enviar collector_id. Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Emite WebSocket solo si se movio >15 m o pasaron >10 s desde el ultimo broadcast.",
      *     operationId="collectorPing",
-     *     security={{"sanctum":{}}},
+     *     security={{"apiKey":{}}},
      *     @OA\RequestBody(required=true,
      *         @OA\JsonContent(
      *             required={"route_id","latitude","longitude"},
      *             @OA\Property(property="route_id",  type="integer", example=1),
+     *             @OA\Property(property="collector_id", type="integer", example=3, description="Solo si la API key no tiene recolector asociado"),
      *             @OA\Property(property="latitude",  type="number",  format="float", example=4.5981),
      *             @OA\Property(property="longitude", type="number",  format="float", example=-74.0758),
      *             @OA\Property(property="accuracy",  type="number",  format="float", example=5.0, nullable=true),
@@ -62,15 +63,24 @@ class CollectorController extends Controller
      */
     public function ping(Request $request): JsonResponse
     {
+        // Authenticated via X-API-Key. If the key is linked to a collector,
+        // $request->user() is that collector; otherwise collector_id must be sent.
+        $keyCollector = $request->user();
+
         $data = $request->validate([
-            'route_id'  => 'required|exists:routes,id',
-            'latitude'  => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-            'accuracy'  => 'nullable|numeric|min:0', // GPS accuracy in meters
-            'status'    => 'sometimes|in:on_route,paused,completed',
+            'route_id'     => 'required|exists:routes,id',
+            'latitude'     => 'required|numeric|between:-90,90',
+            'longitude'    => 'required|numeric|between:-180,180',
+            'accuracy'     => 'nullable|numeric|min:0', // GPS accuracy in meters
+            'status'       => 'sometimes|in:on_route,paused,completed',
+            'collector_id' => [
+                $keyCollector ? 'prohibited' : 'required',
+                'integer',
+                \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'collector')->where('active', true),
+            ],
         ]);
 
-        $collector = $request->user();
+        $collector = $keyCollector ?? User::findOrFail($data['collector_id']);
         $now       = now();
 
         // 1. Persist every ping to the raw breadcrumb log
