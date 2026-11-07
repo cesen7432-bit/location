@@ -1,0 +1,3619 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "API Recolección de Residuos",
+        "description": "API para la gestión de rutas de recolección, seguimiento en tiempo real de recolectores y consulta de horarios por barrio.",
+        "contact": {
+            "email": "admin@example.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/",
+            "description": "Servidor local"
+        }
+    ],
+    "paths": {
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Iniciar sesión",
+                "description": "Autentica un usuario o recolector y retorna un token Bearer Sanctum válido por 7 días.",
+                "operationId": "authLogin",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "secret"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "token": {
+                                                            "type": "string",
+                                                            "example": "1|abc123"
+                                                        },
+                                                        "token_type": {
+                                                            "type": "string",
+                                                            "example": "Bearer"
+                                                        },
+                                                        "expires_in": {
+                                                            "type": "integer",
+                                                            "example": 604800
+                                                        },
+                                                        "user": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "example": "Admin"
+                                                                },
+                                                                "email": {
+                                                                    "type": "string",
+                                                                    "example": "admin@example.com"
+                                                                },
+                                                                "role": {
+                                                                    "type": "string",
+                                                                    "example": "admin",
+                                                                    "enum": [
+                                                                        "admin",
+                                                                        "collector",
+                                                                        "user"
+                                                                    ]
+                                                                },
+                                                                "phone": {
+                                                                    "type": "string",
+                                                                    "example": "+573001234567",
+                                                                    "nullable": true
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciales incorrectas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Cuenta desactivada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Usuario autenticado",
+                "description": "Retorna los datos del usuario dueño del token.",
+                "operationId": "authMe",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "name": {
+                                                            "type": "string",
+                                                            "example": "Admin"
+                                                        },
+                                                        "email": {
+                                                            "type": "string",
+                                                            "example": "admin@example.com"
+                                                        },
+                                                        "role": {
+                                                            "type": "string",
+                                                            "example": "admin"
+                                                        },
+                                                        "phone": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Cerrar sesión",
+                "description": "Invalida el token Sanctum actual.",
+                "operationId": "authLogout",
+                "responses": {
+                    "200": {
+                        "description": "Sesión cerrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/ping": {
+            "post": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Enviar ping GPS",
+                "description": "Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Emite WebSocket solo si se movio >15 m o pasaron >10 s desde el ultimo broadcast.",
+                "operationId": "collectorPing",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "route_id",
+                                    "latitude",
+                                    "longitude"
+                                ],
+                                "properties": {
+                                    "route_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 4.5981
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": -74.0758
+                                    },
+                                    "accuracy": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5,
+                                        "nullable": true
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "example": "on_route",
+                                        "enum": [
+                                            "on_route",
+                                            "paused",
+                                            "completed"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ping registrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "recorded": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "broadcast": {
+                                                            "type": "boolean",
+                                                            "example": false
+                                                        },
+                                                        "session_id": {
+                                                            "type": "integer",
+                                                            "example": 7
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/my-routes": {
+            "get": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Rutas asignadas al recolector autenticado",
+                "description": "Retorna las rutas activas asignadas para hoy (o la fecha indicada).",
+                "operationId": "collectorMyRoutes",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Fecha (Y-m-d). Default: hoy",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-05-01"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "date": {
+                                                            "type": "string",
+                                                            "format": "date",
+                                                            "example": "2026-05-01"
+                                                        },
+                                                        "routes": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/collector/assign-route": {
+            "post": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Asignar ruta a recolector",
+                "operationId": "adminAssignRoute",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "collector_id",
+                                    "route_id",
+                                    "assigned_date"
+                                ],
+                                "properties": {
+                                    "collector_id": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "route_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "assigned_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-05-01"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ruta asignada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "integer",
+                                                            "example": 10
+                                                        },
+                                                        "collector_id": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "route_id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "assigned_date": {
+                                                            "type": "string",
+                                                            "example": "2026-05-01"
+                                                        },
+                                                        "active": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Usuario no es recolector",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/collector/{collectorId}/routes": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Rutas asignadas a un recolector (admin)",
+                "operationId": "adminCollectorRoutes",
+                "parameters": [
+                    {
+                        "name": "collectorId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Fecha (Y-m-d). Default: hoy",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-05-01"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "collector_id": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "date": {
+                                                            "type": "string",
+                                                            "example": "2026-05-01"
+                                                        },
+                                                        "routes": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/tracking/today": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Estado en vivo de todos los recolectores hoy (admin)",
+                "operationId": "adminTodayTracking",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "collector_id": {
+                                                                "type": "integer",
+                                                                "example": 3
+                                                            },
+                                                            "collector_name": {
+                                                                "type": "string",
+                                                                "example": "Juan Perez"
+                                                            },
+                                                            "collector_phone": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            },
+                                                            "route": {
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "integer",
+                                                                        "example": 1
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string",
+                                                                        "example": "Ruta Sur #1"
+                                                                    },
+                                                                    "zone": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            },
+                                                            "latitude": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "nullable": true
+                                                            },
+                                                            "longitude": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "nullable": true
+                                                            },
+                                                            "status": {
+                                                                "type": "string",
+                                                                "example": "on_route"
+                                                            },
+                                                            "started_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "nullable": true
+                                                            },
+                                                            "last_seen_at": {
+                                                                "type": "string",
+                                                                "format": "date-time",
+                                                                "nullable": true
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/collector/{collectorId}/report": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Reporte de ruta de un recolector",
+                "description": "Retorna ruta planificada vs recorrida real (simplificada con Douglas-Peucker) + estadisticas de distancia.",
+                "operationId": "adminRouteReport",
+                "parameters": [
+                    {
+                        "name": "collectorId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-05-01"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "collector_id": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "route": {
+                                                            "type": "object"
+                                                        },
+                                                        "date": {
+                                                            "type": "string",
+                                                            "example": "2026-05-01"
+                                                        },
+                                                        "planned_path": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "simplified_path": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "lat": {
+                                                                        "type": "number",
+                                                                        "format": "float"
+                                                                    },
+                                                                    "lng": {
+                                                                        "type": "number",
+                                                                        "format": "float"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "stats": {
+                                                            "properties": {
+                                                                "raw_ping_count": {
+                                                                    "type": "integer",
+                                                                    "example": 380
+                                                                },
+                                                                "simplified_point_count": {
+                                                                    "type": "integer",
+                                                                    "example": 42
+                                                                },
+                                                                "total_distance_meters": {
+                                                                    "type": "number",
+                                                                    "example": 4250.5
+                                                                },
+                                                                "planned_distance_meters": {
+                                                                    "type": "number",
+                                                                    "example": 3800
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/collector/{collectorId}/raw-tracking": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Dump de breadcrumbs crudos",
+                "description": "Todos los pings GPS sin simplificar para analisis forense o replay detallado.",
+                "operationId": "adminRawTracking",
+                "parameters": [
+                    {
+                        "name": "collectorId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-05-01"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "collector_id": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "route_id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "date": {
+                                                            "type": "string",
+                                                            "example": "2026-05-01"
+                                                        },
+                                                        "count": {
+                                                            "type": "integer",
+                                                            "example": 380
+                                                        },
+                                                        "pings": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "latitude": {
+                                                                        "type": "number",
+                                                                        "format": "float"
+                                                                    },
+                                                                    "longitude": {
+                                                                        "type": "number",
+                                                                        "format": "float"
+                                                                    },
+                                                                    "accuracy": {
+                                                                        "type": "number",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "recorded_at": {
+                                                                        "type": "string",
+                                                                        "format": "date-time"
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/neighborhoods": {
+            "get": {
+                "tags": [
+                    "Neighborhoods"
+                ],
+                "summary": "Listar barrios",
+                "description": "Retorna el catálogo de barrios. Por defecto solo muestra activos.",
+                "operationId": "neighborhoodsIndex",
+                "parameters": [
+                    {
+                        "name": "municipality",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Bogotá"
+                        }
+                    },
+                    {
+                        "name": "zone",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Sur"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por nombre",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Centro"
+                        }
+                    },
+                    {
+                        "name": "active",
+                        "in": "query",
+                        "description": "Filtrar por activo (true/false)",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Neighborhood"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Neighborhoods"
+                ],
+                "summary": "Crear barrio",
+                "operationId": "neighborhoodsStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "latitude",
+                                    "longitude"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "El Centro"
+                                    },
+                                    "municipality": {
+                                        "type": "string",
+                                        "example": "Bogotá",
+                                        "nullable": true
+                                    },
+                                    "zone": {
+                                        "type": "string",
+                                        "example": "Sur",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 4.5981
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": -74.0758
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Barrio creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Neighborhood"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/neighborhoods/{neighborhood}": {
+            "get": {
+                "tags": [
+                    "Neighborhoods"
+                ],
+                "summary": "Ver barrio",
+                "operationId": "neighborhoodsShow",
+                "parameters": [
+                    {
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Neighborhood"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Neighborhoods"
+                ],
+                "summary": "Actualizar barrio",
+                "operationId": "neighborhoodsUpdate",
+                "parameters": [
+                    {
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "El Centro"
+                                    },
+                                    "municipality": {
+                                        "type": "string",
+                                        "example": "Bogotá",
+                                        "nullable": true
+                                    },
+                                    "zone": {
+                                        "type": "string",
+                                        "example": "Sur",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 4.5981
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": -74.0758
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Neighborhood"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Neighborhoods"
+                ],
+                "summary": "Eliminar barrio",
+                "description": "Falla con 409 si el barrio está asignado a alguna ruta.",
+                "operationId": "neighborhoodsDestroy",
+                "parameters": [
+                    {
+                        "name": "neighborhood",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Barrio en uso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/neighborhoods/bulk": {
+            "post": {
+                "tags": [
+                    "Neighborhoods"
+                ],
+                "summary": "Importación masiva de barrios",
+                "description": "Crea hasta 500 barrios en una sola transacción atómica.",
+                "operationId": "neighborhoodsBulkStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "neighborhoods"
+                                ],
+                                "properties": {
+                                    "neighborhoods": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "name",
+                                                "latitude",
+                                                "longitude"
+                                            ],
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "El Centro"
+                                                },
+                                                "municipality": {
+                                                    "type": "string",
+                                                    "example": "Bogotá",
+                                                    "nullable": true
+                                                },
+                                                "zone": {
+                                                    "type": "string",
+                                                    "example": "Sur",
+                                                    "nullable": true
+                                                },
+                                                "latitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 4.5981
+                                                },
+                                                "longitude": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": -74.0758
+                                                },
+                                                "notes": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "maxItems": 500,
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Barrios creados",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "count": {
+                                                            "type": "integer",
+                                                            "example": 10
+                                                        },
+                                                        "neighborhoods": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/Neighborhood"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/public/schedules": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Horarios de recolección activos",
+                "description": "Retorna las rutas activas con sus horarios semanales. Sin autenticación. Filtros opcionales: ?day=monday &zone=sur",
+                "operationId": "publicSchedules",
+                "parameters": [
+                    {
+                        "name": "day",
+                        "in": "query",
+                        "description": "Filtrar por día de la semana",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "monday",
+                                "tuesday",
+                                "wednesday",
+                                "thursday",
+                                "friday",
+                                "saturday",
+                                "sunday"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "zone",
+                        "in": "query",
+                        "description": "Filtrar por zona (búsqueda parcial)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "Sur"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Ruta Sur #1"
+                                                            },
+                                                            "description": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            },
+                                                            "zone": {
+                                                                "type": "string",
+                                                                "example": "Sur",
+                                                                "nullable": true
+                                                            },
+                                                            "total_points": {
+                                                                "type": "integer",
+                                                                "example": 5
+                                                            },
+                                                            "schedule": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "day": {
+                                                                            "type": "string",
+                                                                            "example": "monday"
+                                                                        },
+                                                                        "day_name": {
+                                                                            "type": "string",
+                                                                            "example": "Lunes"
+                                                                        },
+                                                                        "start_time": {
+                                                                            "type": "string",
+                                                                            "example": "07:00"
+                                                                        },
+                                                                        "end_time": {
+                                                                            "type": "string",
+                                                                            "example": "09:00",
+                                                                            "nullable": true
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                }
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/neighborhoods/{neighborhood}/schedule": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Horario de recolección por barrio",
+                "description": "Retorna el horario semanal de recolección para un barrio específico. Sin autenticación.",
+                "operationId": "publicNeighborhoodSchedule",
+                "parameters": [
+                    {
+                        "name": "neighborhood",
+                        "in": "path",
+                        "description": "ID del barrio",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "neighborhood": {
+                                                            "$ref": "#/components/schemas/Neighborhood"
+                                                        },
+                                                        "collection_days": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string",
+                                                                "example": "monday"
+                                                            }
+                                                        },
+                                                        "weekly_schedule": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "properties": {
+                                                                    "day_name": {
+                                                                        "type": "string",
+                                                                        "example": "Lunes"
+                                                                    },
+                                                                    "has_collection": {
+                                                                        "type": "boolean",
+                                                                        "example": true
+                                                                    },
+                                                                    "routes": {
+                                                                        "type": "array",
+                                                                        "items": {
+                                                                            "properties": {
+                                                                                "route_id": {
+                                                                                    "type": "integer",
+                                                                                    "example": 1
+                                                                                },
+                                                                                "route_name": {
+                                                                                    "type": "string",
+                                                                                    "example": "Ruta Sur #1"
+                                                                                },
+                                                                                "zone": {
+                                                                                    "type": "string",
+                                                                                    "example": "Sur",
+                                                                                    "nullable": true
+                                                                                },
+                                                                                "start_time": {
+                                                                                    "type": "string",
+                                                                                    "example": "07:00"
+                                                                                },
+                                                                                "end_time": {
+                                                                                    "type": "string",
+                                                                                    "example": "09:00",
+                                                                                    "nullable": true
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Barrio no encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/collectors/live": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Posiciones en vivo de recolectores",
+                "description": "Retorna la posición actual de todos los recolectores activos hoy. Sin autenticación. Para tiempo real suscribirse al canal WebSocket `collectors.live`.",
+                "operationId": "publicLiveCollectors",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/CollectorSession"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/routes/{route}/points": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Polilínea GPS planificada de una ruta",
+                "description": "Retorna los puntos ordenados (barrios) de una ruta con sus coordenadas y horarios. Sin autenticación.",
+                "operationId": "publicRoutePoints",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "description": "ID de la ruta",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "route": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "example": "Ruta Sur #1"
+                                                                },
+                                                                "zone": {
+                                                                    "type": "string",
+                                                                    "example": "Sur",
+                                                                    "nullable": true
+                                                                },
+                                                                "schedule": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "properties": {
+                                                                            "day": {
+                                                                                "type": "string",
+                                                                                "example": "monday"
+                                                                            },
+                                                                            "day_name": {
+                                                                                "type": "string",
+                                                                                "example": "Lunes"
+                                                                            },
+                                                                            "start_time": {
+                                                                                "type": "string",
+                                                                                "example": "07:00"
+                                                                            },
+                                                                            "end_time": {
+                                                                                "type": "string",
+                                                                                "example": "09:00",
+                                                                                "nullable": true
+                                                                            }
+                                                                        },
+                                                                        "type": "object"
+                                                                    }
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        },
+                                                        "points": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "sequence": {
+                                                                        "type": "integer",
+                                                                        "example": 1
+                                                                    },
+                                                                    "neighborhood": {
+                                                                        "type": "string",
+                                                                        "example": "El Centro"
+                                                                    },
+                                                                    "municipality": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "zone": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "latitude": {
+                                                                        "type": "number",
+                                                                        "format": "float",
+                                                                        "example": 4.5981
+                                                                    },
+                                                                    "longitude": {
+                                                                        "type": "number",
+                                                                        "format": "float",
+                                                                        "example": -74.0758
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ruta no encontrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/collectors/{collectorId}/path": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Ruta simplificada de un recolector (hoy)",
+                "description": "Retorna el recorrido de hoy del recolector simplificado con Douglas-Peucker (ε=15m). Cargar al inicio y suscribirse al canal WebSocket `collectors.live` para agregar pings en tiempo real. Sin autenticación.",
+                "operationId": "publicCollectorPath",
+                "parameters": [
+                    {
+                        "name": "collectorId",
+                        "in": "path",
+                        "description": "ID del recolector",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    },
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "description": "ID de la ruta",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "collector_id": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "route_id": {
+                                                            "type": "integer",
+                                                            "example": 1
+                                                        },
+                                                        "path": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "lat": {
+                                                                        "type": "number",
+                                                                        "format": "float",
+                                                                        "example": 4.5981
+                                                                    },
+                                                                    "lng": {
+                                                                        "type": "number",
+                                                                        "format": "float",
+                                                                        "example": -74.0758
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "point_count": {
+                                                            "type": "integer",
+                                                            "example": 42
+                                                        },
+                                                        "raw_count": {
+                                                            "type": "integer",
+                                                            "example": 380
+                                                        },
+                                                        "last_ping_at": {
+                                                            "type": "string",
+                                                            "format": "date-time",
+                                                            "nullable": true
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "route_id faltante",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/routes": {
+            "get": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Listar rutas",
+                "operationId": "routesIndex",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "name": {
+                                                                "type": "string",
+                                                                "example": "Ruta Sur #1"
+                                                            },
+                                                            "description": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            },
+                                                            "zone": {
+                                                                "type": "string",
+                                                                "nullable": true
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean",
+                                                                "example": true
+                                                            },
+                                                            "total_points": {
+                                                                "type": "integer",
+                                                                "example": 5
+                                                            },
+                                                            "schedule_days": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "string",
+                                                                    "example": "monday"
+                                                                }
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Crear ruta",
+                "operationId": "routesStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Ruta Sur #1"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "zone": {
+                                        "type": "string",
+                                        "example": "Sur",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "neighborhood_ids": {
+                                        "description": "IDs de barrios en orden de recorrido",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ruta creada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Route"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routes/{route}": {
+            "get": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Ver ruta con puntos y horarios",
+                "operationId": "routesShow",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Route"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Actualizar ruta",
+                "operationId": "routesUpdate",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Ruta Sur #1"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "zone": {
+                                        "type": "string",
+                                        "example": "Sur",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Route"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Eliminar ruta",
+                "operationId": "routesDestroy",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routes/{route}/points": {
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Agregar parada a una ruta",
+                "operationId": "routesStorePoint",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "neighborhood_id",
+                                    "sequence"
+                                ],
+                                "properties": {
+                                    "neighborhood_id": {
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "sequence": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Punto creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/RoutePoint"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routes/{route}/points/{point}": {
+            "put": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Actualizar parada de ruta",
+                "operationId": "routesUpdatePoint",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "point",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "neighborhood_id": {
+                                        "type": "integer",
+                                        "example": 7
+                                    },
+                                    "sequence": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/RoutePoint"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Eliminar parada de ruta",
+                "operationId": "routesDestroyPoint",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "point",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 2
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routes/{route}/points/bulk": {
+            "put": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Reemplazar todas las paradas de una ruta",
+                "description": "Elimina todas las paradas existentes y las reemplaza con el nuevo orden de barrios.",
+                "operationId": "routesBulkPoints",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "neighborhood_ids"
+                                ],
+                                "properties": {
+                                    "neighborhood_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "example": 3
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Route"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routes/{route}/schedules": {
+            "get": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Horario semanal de una ruta",
+                "description": "Retorna los 7 dias. Los dias configurados tienen horas; los no configurados aparecen con null.",
+                "operationId": "schedulesIndex",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "route": {
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                },
+                                                                "name": {
+                                                                    "type": "string",
+                                                                    "example": "Ruta Sur #1"
+                                                                },
+                                                                "zone": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        },
+                                                        "schedule": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "day": {
+                                                                        "type": "string",
+                                                                        "example": "monday"
+                                                                    },
+                                                                    "day_name": {
+                                                                        "type": "string",
+                                                                        "example": "Lunes"
+                                                                    },
+                                                                    "route_id": {
+                                                                        "type": "integer",
+                                                                        "example": 1
+                                                                    },
+                                                                    "schedule_id": {
+                                                                        "type": "integer",
+                                                                        "example": 3,
+                                                                        "nullable": true
+                                                                    },
+                                                                    "start_time": {
+                                                                        "type": "string",
+                                                                        "example": "07:00",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "end_time": {
+                                                                        "type": "string",
+                                                                        "example": "09:00",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "active": {
+                                                                        "type": "boolean",
+                                                                        "example": true
+                                                                    },
+                                                                    "configured": {
+                                                                        "type": "boolean",
+                                                                        "example": true
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Configurar multiples dias (mantiene los no incluidos)",
+                "description": "Upsert de varios dias a la vez. Los dias no incluidos en el payload se conservan.",
+                "operationId": "schedulesBulkStore",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "days"
+                                ],
+                                "properties": {
+                                    "days": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "day_of_week",
+                                                "start_time"
+                                            ],
+                                            "properties": {
+                                                "day_of_week": {
+                                                    "type": "string",
+                                                    "example": "monday",
+                                                    "enum": [
+                                                        "monday",
+                                                        "tuesday",
+                                                        "wednesday",
+                                                        "thursday",
+                                                        "friday",
+                                                        "saturday",
+                                                        "sunday"
+                                                    ]
+                                                },
+                                                "start_time": {
+                                                    "type": "string",
+                                                    "example": "07:00"
+                                                },
+                                                "end_time": {
+                                                    "type": "string",
+                                                    "example": "09:00",
+                                                    "nullable": true
+                                                },
+                                                "active": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "maxItems": 7,
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "route": {
+                                                            "type": "object"
+                                                        },
+                                                        "days_configured": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "schedules": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/Schedule"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Configurar un dia del horario",
+                "description": "Agrega o actualiza un dia de la semana para esta ruta (upsert por dia).",
+                "operationId": "schedulesStore",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "day_of_week",
+                                    "start_time"
+                                ],
+                                "properties": {
+                                    "day_of_week": {
+                                        "type": "string",
+                                        "example": "monday",
+                                        "enum": [
+                                            "monday",
+                                            "tuesday",
+                                            "wednesday",
+                                            "thursday",
+                                            "friday",
+                                            "saturday",
+                                            "sunday"
+                                        ]
+                                    },
+                                    "start_time": {
+                                        "type": "string",
+                                        "example": "07:00"
+                                    },
+                                    "end_time": {
+                                        "type": "string",
+                                        "example": "09:00",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Horario configurado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Schedule"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Reemplazar horario completo",
+                "description": "Sustituye TODOS los dias de la semana. Los dias no incluidos en el payload son eliminados.",
+                "operationId": "schedulesReplaceAll",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "days"
+                                ],
+                                "properties": {
+                                    "days": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "day_of_week",
+                                                "start_time"
+                                            ],
+                                            "properties": {
+                                                "day_of_week": {
+                                                    "type": "string",
+                                                    "example": "monday",
+                                                    "enum": [
+                                                        "monday",
+                                                        "tuesday",
+                                                        "wednesday",
+                                                        "thursday",
+                                                        "friday",
+                                                        "saturday",
+                                                        "sunday"
+                                                    ]
+                                                },
+                                                "start_time": {
+                                                    "type": "string",
+                                                    "example": "07:00"
+                                                },
+                                                "end_time": {
+                                                    "type": "string",
+                                                    "example": "09:00",
+                                                    "nullable": true
+                                                },
+                                                "active": {
+                                                    "type": "boolean",
+                                                    "example": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "maxItems": 7,
+                                        "minItems": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "route": {
+                                                            "type": "object"
+                                                        },
+                                                        "days_configured": {
+                                                            "type": "integer",
+                                                            "example": 3
+                                                        },
+                                                        "schedules": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/Schedule"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routes/{route}/schedules/{schedule}": {
+            "put": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Actualizar un dia especifico",
+                "operationId": "schedulesUpdate",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "schedule",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "start_time": {
+                                        "type": "string",
+                                        "example": "08:00"
+                                    },
+                                    "end_time": {
+                                        "type": "string",
+                                        "example": "10:00",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/Schedule"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Eliminar un dia del horario",
+                "operationId": "schedulesDestroy",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "schedule",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 3
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ApiResponse": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "OK"
+                    },
+                    "data": {
+                        "nullable": true
+                    },
+                    "errors": {
+                        "nullable": true
+                    },
+                    "code": {
+                        "type": "integer",
+                        "example": 200
+                    }
+                },
+                "type": "object"
+            },
+            "Neighborhood": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "El Centro"
+                    },
+                    "municipality": {
+                        "type": "string",
+                        "example": "Bogotá",
+                        "nullable": true
+                    },
+                    "zone": {
+                        "type": "string",
+                        "example": "Sur",
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 4.5981
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": -74.0758
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "Schedule": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "route_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "day_of_week": {
+                        "type": "string",
+                        "example": "monday",
+                        "enum": [
+                            "monday",
+                            "tuesday",
+                            "wednesday",
+                            "thursday",
+                            "friday",
+                            "saturday",
+                            "sunday"
+                        ]
+                    },
+                    "day_name": {
+                        "type": "string",
+                        "example": "Lunes"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "example": "07:00"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "example": "09:00",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "RoutePoint": {
+                "properties": {
+                    "sequence": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "neighborhood": {
+                        "$ref": "#/components/schemas/Neighborhood"
+                    }
+                },
+                "type": "object"
+            },
+            "Route": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Ruta Sur #1"
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "zone": {
+                        "type": "string",
+                        "example": "Sur",
+                        "nullable": true
+                    },
+                    "active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "total_points": {
+                        "type": "integer",
+                        "example": 5
+                    },
+                    "schedule": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Schedule"
+                        }
+                    },
+                    "points": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RoutePoint"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "CollectorSession": {
+                "properties": {
+                    "collector_id": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "collector_name": {
+                        "type": "string",
+                        "example": "Juan Pérez"
+                    },
+                    "route": {
+                        "properties": {
+                            "id": {
+                                "type": "integer",
+                                "example": 1
+                            },
+                            "name": {
+                                "type": "string",
+                                "example": "Ruta Sur #1"
+                            },
+                            "zone": {
+                                "type": "string",
+                                "example": "Sur"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 4.5981
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": -74.0758
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "on_route",
+                        "enum": [
+                            "on_route",
+                            "paused",
+                            "completed"
+                        ]
+                    },
+                    "last_seen_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-05-01T08:30:00+00:00"
+                    }
+                },
+                "type": "object"
+            },
+            "ValidationError": {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Error de validación"
+                    },
+                    "data": {
+                        "example": null,
+                        "nullable": true
+                    },
+                    "errors": {
+                        "properties": {
+                            "field": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "example": "El campo es obligatorio."
+                                }
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "code": {
+                        "type": "integer",
+                        "example": 422
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "sanctum": {
+                "type": "http",
+                "description": "Token Sanctum. Obtenerlo en POST /api/auth/login",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Autenticación y sesión"
+        },
+        {
+            "name": "Public",
+            "description": "Endpoints sin autenticación — horarios y tracking live"
+        },
+        {
+            "name": "Collector",
+            "description": "Endpoints para recolectores autenticados"
+        },
+        {
+            "name": "Neighborhoods",
+            "description": "Catálogo de barrios (admin)"
+        },
+        {
+            "name": "Routes",
+            "description": "Gestión de rutas GPS (admin)"
+        },
+        {
+            "name": "Schedules",
+            "description": "Horarios semanales por ruta (admin)"
+        },
+        {
+            "name": "Tracking",
+            "description": "Reportes y seguimiento de recolectores (admin)"
+        }
+    ]
+}
