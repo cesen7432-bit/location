@@ -82,6 +82,65 @@ class RouteRecordingTest extends TestCase
         $this->assertTrue($this->route->fresh()->hasGeometry());
     }
 
+    public function test_recording_creates_a_route_that_can_be_assigned_and_started(): void
+    {
+        $near = \App\Models\Neighborhood::create(['name' => 'Jipiro', 'latitude' => $this->latAt(300), 'longitude' => self::LNG + 0.001, 'active' => true]);
+        $first = \App\Models\Neighborhood::create(['name' => 'Las Palmas', 'latitude' => $this->latAt(20), 'longitude' => self::LNG, 'active' => true]);
+        \App\Models\Neighborhood::create(['name' => 'Lejano', 'latitude' => $this->latAt(300), 'longitude' => self::LNG + 0.01, 'active' => true]);
+
+        $id = $this->as($this->admin, 'POST', '/api/admin/recordings', ['notes' => 'Ruta nueva'])
+            ->assertCreated()
+            ->assertJsonPath('result.route', null)
+            ->json('result.id');
+
+        // Varias grabaciones de rutas nuevas pueden estar abiertas a la vez
+        $this->as($this->admin, 'POST', '/api/admin/recordings')->assertCreated();
+
+        $this->as($this->admin, 'POST', "/api/admin/recordings/{$id}/points", ['points' => $this->points(0, 25, now())])->assertOk();
+
+        $this->as($this->admin, 'POST', "/api/admin/recordings/{$id}/finish")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('name', 'result');
+
+        $res = $this->as($this->admin, 'POST', "/api/admin/recordings/{$id}/finish", [
+            'name' => 'Ruta 4 - Sector Este', 'code' => '4', 'shift' => 'day', 'zone' => 'Este',
+        ])->assertOk()
+            ->assertJsonPath('result.route_created', true)
+            ->assertJsonPath('result.route.code', '4')
+            ->assertJsonPath('result.route.neighborhoods.0.id', $first->id)
+            ->assertJsonPath('result.route.neighborhoods.1.id', $near->id)
+            ->assertJsonCount(2, 'result.route.neighborhoods')
+            ->assertJsonPath('result.geometry.source', 'recording');
+
+        $routeId = $res->json('result.route.id');
+        $this->as($this->admin, 'GET', '/api/admin/recordings?status=recording')->assertOk()->assertJsonCount(1, 'result');
+
+        $collector = $this->makeUser('collector');
+        $this->as($this->admin, 'POST', '/api/admin/collector/assign-route', [
+            'collector_id' => $collector->id, 'route_id' => $routeId, 'assigned_date' => today()->toDateString(),
+        ])->assertCreated();
+
+        $this->as($this->tokenFor($collector), 'POST', '/api/collector/runs/start', ['route_id' => $routeId])->assertCreated();
+    }
+
+    public function test_route_can_be_created_with_its_geometry(): void
+    {
+        $nb = \App\Models\Neighborhood::create(['name' => 'Centro', 'latitude' => $this->latAt(100), 'longitude' => self::LNG, 'active' => true]);
+
+        $this->as($this->admin, 'POST', '/api/admin/routes', [
+            'name' => 'Ruta 6', 'code' => '6',
+            'path' => $this->points(0, 10, now()),
+        ])->assertCreated()
+            ->assertJsonPath('result.has_geometry', true)
+            ->assertJsonPath('result.points.0.neighborhood.id', $nb->id);
+
+        $this->as($this->admin, 'POST', '/api/admin/routes', [
+            'name' => 'Ruta inválida', 'geometry' => ['type' => 'Point', 'coordinates' => [-79.2, -4.0]],
+        ])->assertStatus(422);
+
+        $this->assertNull(Route::where('name', 'Ruta inválida')->first());
+    }
+
     public function test_finish_without_enough_points_keeps_recording_open(): void
     {
         $id = $this->as($this->admin, 'POST', "/api/admin/routes/{$this->route->id}/recordings")->json('result.id');

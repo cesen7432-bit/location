@@ -63,9 +63,11 @@ class RouteRecording extends Model
         return [
             'id'             => $this->id,
             'status'         => $this->status,
-            'route'          => $this->relationLoaded('route') && $this->route
-                ? ['id' => $this->route->id, 'name' => $this->route->name, 'code' => $this->route->code]
-                : ['id' => $this->route_id],
+            'route'          => match (true) {
+                $this->route_id === null => null,
+                $this->relationLoaded('route') && $this->route !== null => ['id' => $this->route->id, 'name' => $this->route->name, 'code' => $this->route->code],
+                default => ['id' => $this->route_id],
+            },
             'started_at'     => $this->started_at?->toIso8601String(),
             'finished_at'    => $this->finished_at?->toIso8601String(),
             'point_count'    => $this->point_count,

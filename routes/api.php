@@ -140,7 +140,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::post('geometry/from-tracking', [RouteGeometryController::class, 'fromTracking']);
         Route::delete('geometry', [RouteGeometryController::class, 'destroy']);
 
-        Route::post('recordings', [RouteRecordingController::class, 'start']);
+        Route::post('recordings', [RouteRecordingController::class, 'startForRoute']);
 
         // Weekly schedule for this route
         // GET    → full week view (all 7 days, null if not configured)
@@ -166,6 +166,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('collector/{collectorId}/report', [CollectorController::class, 'routeReport']);
     Route::get('collector/{collectorId}/raw-tracking', [CollectorController::class, 'rawTracking']);
 
+    Route::get('recordings', [RouteRecordingController::class, 'index']);
+    Route::post('recordings', [RouteRecordingController::class, 'start']);
     Route::get('recordings/{recording}', [RouteRecordingController::class, 'show']);
     Route::post('recordings/{recording}/points', [RouteRecordingController::class, 'addPoints']);
     Route::post('recordings/{recording}/finish', [RouteRecordingController::class, 'finish']);

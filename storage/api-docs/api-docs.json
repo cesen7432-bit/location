@@ -4109,13 +4109,114 @@
                 ]
             }
         },
+        "/api/admin/recordings": {
+            "get": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Listar grabaciones",
+                "description": "Útil para retomar una grabación abierta (status=recording).",
+                "operationId": "87d79a11b4c543fb88efaf2ef2760e09",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "recording",
+                                "finished",
+                                "cancelled"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Iniciar grabación (ruta nueva o existente)",
+                "description": "Sin route_id la grabación crea una ruta nueva al finalizar. Con route_id reemplaza el trazado de esa ruta; si ya tiene una grabación abierta responde 409 con ella.",
+                "operationId": "f96aa40d6dd8b47e776b09c1be42a66e",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "route_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Grabación iniciada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ya hay una grabación abierta para la ruta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/admin/routes/{route}/recordings": {
             "post": {
                 "tags": [
                     "Routes"
                 ],
-                "summary": "Iniciar grabación de trazado",
-                "description": "Abre una grabación para enviar los puntos del GPS del navegador por tramos. Si ya hay una grabación abierta para la ruta responde 409 con ella (para retomarla).",
+                "summary": "Iniciar grabación de una ruta existente",
                 "operationId": "216602d53f5c3b794c689e50bf068201",
                 "parameters": [
                     {
@@ -4127,21 +4228,6 @@
                         }
                     }
                 ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "notes": {
-                                        "type": "string",
-                                        "nullable": true
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "201": {
                         "description": "Grabación iniciada",
@@ -4299,7 +4385,7 @@
                     "Routes"
                 ],
                 "summary": "Cancelar grabación",
-                "description": "Descarta la grabación y sus puntos. El trazado actual de la ruta no cambia.",
+                "description": "Descarta la grabación y sus puntos. No crea ni modifica rutas.",
                 "operationId": "7f926d9bcde95f3104c345c68d6db592",
                 "parameters": [
                     {
@@ -4335,8 +4421,8 @@
                 "tags": [
                     "Routes"
                 ],
-                "summary": "Finalizar grabación y guardar trazado",
-                "description": "Limpia los puntos (precisión > 30 m, repetidos, saltos > 120 km/h), simplifica y guarda la línea como trazado de la ruta.",
+                "summary": "Finalizar grabación",
+                "description": "Limpia los puntos, simplifica y guarda la línea. Si la grabación no tiene ruta, crea la ruta con los datos enviados (name obligatorio) y detecta los barrios por donde pasa. La ruta queda lista para asignarla a recolectores.",
                 "operationId": "49801a6cb43bb32d06415355800583d1",
                 "parameters": [
                     {
@@ -4348,6 +4434,42 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Ruta 4 - Sector Este"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "example": "4"
+                                    },
+                                    "shift": {
+                                        "type": "string",
+                                        "enum": [
+                                            "day",
+                                            "night"
+                                        ]
+                                    },
+                                    "zone": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "detect_neighborhoods": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Trazado guardado",
@@ -4370,7 +4492,7 @@
                         }
                     },
                     "422": {
-                        "description": "Puntos insuficientes",
+                        "description": "Puntos insuficientes o datos de la ruta inválidos",
                         "content": {
                             "application/json": {
                                 "schema": {

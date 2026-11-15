@@ -5,14 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Route;
 use App\Models\RoutePoint;
 use App\Models\Schedule;
+use App\Services\RouteGeometryService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 
 class RouteController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private readonly RouteGeometryService $geometry) {}
 
     /**
      * @OA\Get(
@@ -94,9 +99,28 @@ class RouteController extends Controller
             'active'             => 'boolean',
             'neighborhood_ids'   => 'sometimes|array|min:1',
             'neighborhood_ids.*' => 'distinct|exists:neighborhoods,id',
-        ]);
+        ] + RouteGeometryService::inputRules(false));
 
-        $route = Route::create($data)->refresh();
+        // El trazado se lee antes de crear la ruta: si es inválido no queda una ruta a medias
+        $line = null;
+        if ($this->geometry->hasLineInput($request)) {
+            try {
+                $line = $this->geometry->lineFromInput($request);
+                $this->geometry->prepare($line[0]);
+            } catch (InvalidArgumentException $e) {
+                return $this->error($e->getMessage(), null, 422);
+            }
+        }
+
+        $route = Route::create(Arr::only($data, ['name', 'code', 'shift', 'description', 'zone', 'active']))->refresh();
+
+        if ($line) {
+            $this->geometry->saveGeometry($route, $line[0], $line[1]);
+
+            if (empty($data['neighborhood_ids']) && $request->boolean('detect_neighborhoods', true)) {
+                $this->geometry->detectNeighborhoods($route);
+            }
+        }
 
         if (!empty($data['neighborhood_ids'])) {
             $points = array_map(

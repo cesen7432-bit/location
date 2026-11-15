@@ -60,41 +60,15 @@ class RouteGeometryController extends Controller
      */
     public function store(Request $request, Route $route): JsonResponse
     {
-        $request->validate([
-            'file'       => 'required_without_all:geometry,path|file|max:10240',
-            'geometry'   => 'required_without_all:file,path|array',
-            'path'       => 'required_without_all:file,geometry|array|min:2',
-            'path.*.lat' => 'required_with:path|numeric|between:-90,90',
-            'path.*.lng' => 'required_with:path|numeric|between:-180,180',
-            'path.*.accuracy'    => 'nullable|numeric|min:0',
-            'path.*.recorded_at' => 'nullable|date',
-            'simplify'   => 'sometimes|boolean',
-        ]);
+        $request->validate(RouteGeometryService::inputRules(true));
 
         try {
-            if ($request->hasFile('file')) {
-                $file   = $request->file('file');
-                $latLng = $this->geometry->parseDocument($file->get(), $file->getClientOriginalExtension());
-                $source = 'import';
-            } elseif ($request->filled('geometry')) {
-                $latLng = $this->geometry->parseGeoJson($request->input('geometry'));
-                $source = 'import';
-            } else {
-                $path   = $request->input('path');
-                $latLng = $this->geometry->cleanPoints(array_map(fn ($p) => [
-                    'lat'      => (float) $p['lat'],
-                    'lng'      => (float) $p['lng'],
-                    'accuracy' => isset($p['accuracy']) ? (float) $p['accuracy'] : null,
-                    'time'     => isset($p['recorded_at']) ? Carbon::parse($p['recorded_at']) : null,
-                ], $path));
-                $source = collect($path)->contains(fn ($p) => isset($p['recorded_at'])) ? 'recording' : 'manual';
-            }
-
-            if ($request->boolean('simplify', true)) {
-                $latLng = $this->geometry->simplifyLatLng($latLng);
-            }
-
+            [$latLng, $source] = $this->geometry->lineFromInput($request);
             $this->geometry->saveGeometry($route, $latLng, $source);
+
+            if ($request->boolean('detect_neighborhoods')) {
+                $this->geometry->detectNeighborhoods($route);
+            }
         } catch (InvalidArgumentException $e) {
             return $this->error($e->getMessage(), null, 422);
         }

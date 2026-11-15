@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\LocationRouteMatch;
+use App\Models\Neighborhood;
 use App\Models\Route;
 use App\Models\UserLocation;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class RouteGeometryService
@@ -13,6 +17,8 @@ class RouteGeometryService
     private const EARTH_RADIUS = 6371000;
 
     public const MATCH_MAX_DISTANCE_M = 150;
+    // El punto de un barrio es su centro, no una calle: se usa un radio mayor
+    public const NEIGHBORHOOD_RADIUS_M = 250;
     public const OFF_ROUTE_DISTANCE_M = 50;
     public const OFF_ROUTE_PINGS      = 3;
 
@@ -213,6 +219,88 @@ class RouteGeometryService
         }
 
         return array_map(fn ($p) => [$p['lat'], $p['lng']], $kept);
+    }
+
+    /** Reglas para recibir un trazado como archivo, GeoJSON o lista de puntos. */
+    public static function inputRules(bool $required): array
+    {
+        $req = fn (string $others) => $required ? "required_without_all:{$others}" : 'nullable';
+
+        return [
+            'file'                 => $req('geometry,path') . '|file|max:10240',
+            'geometry'             => $req('file,path') . '|array',
+            'path'                 => $req('file,geometry') . '|array|min:2',
+            'path.*.lat'           => 'required_with:path|numeric|between:-90,90',
+            'path.*.lng'           => 'required_with:path|numeric|between:-180,180',
+            'path.*.accuracy'      => 'nullable|numeric|min:0',
+            'path.*.recorded_at'   => 'nullable|date',
+            'simplify'             => 'sometimes|boolean',
+            'detect_neighborhoods' => 'sometimes|boolean',
+        ];
+    }
+
+    public function hasLineInput(Request $request): bool
+    {
+        return $request->hasFile('file') || $request->filled('geometry') || $request->filled('path');
+    }
+
+    /**
+     * @return array{0: array, 1: string}  [[lat, lng], ...] y el origen del trazado
+     */
+    public function lineFromInput(Request $request): array
+    {
+        if ($request->hasFile('file')) {
+            $file   = $request->file('file');
+            $latLng = $this->parseDocument($file->get(), $file->getClientOriginalExtension());
+            $source = 'import';
+        } elseif ($request->filled('geometry')) {
+            $latLng = $this->parseGeoJson($request->input('geometry'));
+            $source = 'import';
+        } else {
+            $path   = $request->input('path');
+            $latLng = $this->cleanPoints(array_map(fn ($p) => [
+                'lat'      => (float) $p['lat'],
+                'lng'      => (float) $p['lng'],
+                'accuracy' => isset($p['accuracy']) ? (float) $p['accuracy'] : null,
+                'time'     => isset($p['recorded_at']) ? Carbon::parse($p['recorded_at']) : null,
+            ], $path));
+            $source = collect($path)->contains(fn ($p) => isset($p['recorded_at'])) ? 'recording' : 'manual';
+        }
+
+        if ($request->boolean('simplify', true)) {
+            $latLng = $this->simplifyLatLng($latLng);
+        }
+
+        return [$latLng, $source];
+    }
+
+    /**
+     * Reemplaza los barrios de la ruta por los activos cuyo punto queda a <= $radius de la línea,
+     * en el orden en que la ruta pasa por ellos.
+     */
+    public function detectNeighborhoods(Route $route, float $radius = self::NEIGHBORHOOD_RADIUS_M): array
+    {
+        $prepared = $this->prepared($route);
+
+        if (!$prepared) {
+            return [];
+        }
+
+        $found = Neighborhood::where('active', true)->get()
+            ->map(fn ($n) => ['n' => $n, 'hit' => $this->project($prepared, (float) $n->latitude, (float) $n->longitude)])
+            ->filter(fn ($x) => $x['hit']['distance_m'] <= $radius)
+            ->sortBy(fn ($x) => $x['hit']['along_m'])
+            ->values();
+
+        DB::transaction(function () use ($route, $found) {
+            $route->points()->delete();
+
+            foreach ($found as $i => $x) {
+                $route->points()->create(['neighborhood_id' => $x['n']->id, 'sequence' => $i + 1]);
+            }
+        });
+
+        return $found->map(fn ($x) => $x['n']->id)->all();
     }
 
     public function simplifyLatLng(array $latLng, float $epsilon = self::SIMPLIFY_EPS_M): array
