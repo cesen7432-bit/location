@@ -10,6 +10,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\RouteGeometryController;
+use App\Http\Controllers\RouteRecordingController;
 use App\Http\Controllers\RouteRunController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\UserLocationController;
@@ -139,6 +140,8 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::post('geometry/from-tracking', [RouteGeometryController::class, 'fromTracking']);
         Route::delete('geometry', [RouteGeometryController::class, 'destroy']);
 
+        Route::post('recordings', [RouteRecordingController::class, 'start']);
+
         // Weekly schedule for this route
         // GET    → full week view (all 7 days, null if not configured)
         // POST   → add or update a single day
@@ -162,6 +165,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('tracking/today', [CollectorController::class, 'todayTracking']);
     Route::get('collector/{collectorId}/report', [CollectorController::class, 'routeReport']);
     Route::get('collector/{collectorId}/raw-tracking', [CollectorController::class, 'rawTracking']);
+
+    Route::get('recordings/{recording}', [RouteRecordingController::class, 'show']);
+    Route::post('recordings/{recording}/points', [RouteRecordingController::class, 'addPoints']);
+    Route::post('recordings/{recording}/finish', [RouteRecordingController::class, 'finish']);
+    Route::delete('recordings/{recording}', [RouteRecordingController::class, 'cancel']);
 
     Route::get('runs', [RouteRunController::class, 'index']);
     Route::get('runs/{run}', [RouteRunController::class, 'show']);

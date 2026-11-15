@@ -66,6 +66,8 @@ class RouteGeometryController extends Controller
             'path'       => 'required_without_all:file,geometry|array|min:2',
             'path.*.lat' => 'required_with:path|numeric|between:-90,90',
             'path.*.lng' => 'required_with:path|numeric|between:-180,180',
+            'path.*.accuracy'    => 'nullable|numeric|min:0',
+            'path.*.recorded_at' => 'nullable|date',
             'simplify'   => 'sometimes|boolean',
         ]);
 
@@ -78,8 +80,14 @@ class RouteGeometryController extends Controller
                 $latLng = $this->geometry->parseGeoJson($request->input('geometry'));
                 $source = 'import';
             } else {
-                $latLng = array_map(fn ($p) => [(float) $p['lat'], (float) $p['lng']], $request->input('path'));
-                $source = 'manual';
+                $path   = $request->input('path');
+                $latLng = $this->geometry->cleanPoints(array_map(fn ($p) => [
+                    'lat'      => (float) $p['lat'],
+                    'lng'      => (float) $p['lng'],
+                    'accuracy' => isset($p['accuracy']) ? (float) $p['accuracy'] : null,
+                    'time'     => isset($p['recorded_at']) ? Carbon::parse($p['recorded_at']) : null,
+                ], $path));
+                $source = collect($path)->contains(fn ($p) => isset($p['recorded_at'])) ? 'recording' : 'manual';
             }
 
             if ($request->boolean('simplify', true)) {
@@ -161,16 +169,6 @@ class RouteGeometryController extends Controller
 
     private function resource(Route $route): array
     {
-        $path = $this->geometry->path($route);
-
-        return [
-            'route'        => ['id' => $route->id, 'name' => $route->name, 'code' => $route->code],
-            'source'       => $route->geometry_source,
-            'distance_m'   => $route->distance_m,
-            'points_count' => count($path),
-            'served_locations' => $route->locationMatches()->count(),
-            'updated_at'   => $route->updated_at?->toIso8601String(),
-            'path'         => $path,
-        ];
+        return $this->geometry->summary($route);
     }
 }

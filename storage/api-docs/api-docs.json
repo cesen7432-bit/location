@@ -4109,6 +4109,284 @@
                 ]
             }
         },
+        "/api/admin/routes/{route}/recordings": {
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Iniciar grabación de trazado",
+                "description": "Abre una grabación para enviar los puntos del GPS del navegador por tramos. Si ya hay una grabación abierta para la ruta responde 409 con ella (para retomarla).",
+                "operationId": "216602d53f5c3b794c689e50bf068201",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Grabación iniciada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ya hay una grabación abierta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/recordings/{recording}/points": {
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Enviar tramo de puntos",
+                "description": "Hasta 1000 puntos por petición. Reenviar un tramo es seguro: los puntos con el mismo recorded_at no se duplican.",
+                "operationId": "fdfc6a062e0cf2b47978e53a2e1ebba9",
+                "parameters": [
+                    {
+                        "name": "recording",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "points"
+                                ],
+                                "properties": {
+                                    "points": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "lat": {
+                                                    "type": "number",
+                                                    "example": -3.99312
+                                                },
+                                                "lng": {
+                                                    "type": "number",
+                                                    "example": -79.20441
+                                                },
+                                                "accuracy": {
+                                                    "type": "number",
+                                                    "example": 6.5
+                                                },
+                                                "recorded_at": {
+                                                    "type": "string",
+                                                    "format": "date-time",
+                                                    "example": "2026-11-09T13:00:05.120Z"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "La grabación no está abierta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/recordings/{recording}": {
+            "get": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Ver grabación",
+                "description": "Estado y vista previa de la línea limpia y simplificada con los puntos recibidos hasta ahora.",
+                "operationId": "0f8f64f5e7db921541a906ea68be90bd",
+                "parameters": [
+                    {
+                        "name": "recording",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Cancelar grabación",
+                "description": "Descarta la grabación y sus puntos. El trazado actual de la ruta no cambia.",
+                "operationId": "7f926d9bcde95f3104c345c68d6db592",
+                "parameters": [
+                    {
+                        "name": "recording",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/recordings/{recording}/finish": {
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Finalizar grabación y guardar trazado",
+                "description": "Limpia los puntos (precisión > 30 m, repetidos, saltos > 120 km/h), simplifica y guarda la línea como trazado de la ruta.",
+                "operationId": "49801a6cb43bb32d06415355800583d1",
+                "parameters": [
+                    {
+                        "name": "recording",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trazado guardado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "La grabación no está abierta",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Puntos insuficientes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/collector/runs/start": {
             "post": {
                 "tags": [

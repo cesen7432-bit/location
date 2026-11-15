@@ -162,23 +162,49 @@ class RouteGeometryService
      */
     public function lineFromPings(iterable $pings): array
     {
+        $points = [];
+
+        foreach ($pings as $p) {
+            $points[] = [
+                'lat'      => (float) $p->latitude,
+                'lng'      => (float) $p->longitude,
+                'accuracy' => $p->accuracy,
+                'time'     => $p->recorded_at,
+            ];
+        }
+
+        return $this->simplifyLatLng($this->cleanPoints($points));
+    }
+
+    /**
+     * Descarta puntos imprecisos, repetidos y saltos imposibles. Sin 'time' no se evalúa la velocidad.
+     *
+     * @param  array  $points  [['lat', 'lng', 'accuracy' => ?float, 'time' => ?Carbon], ...] en orden
+     * @return array  [[lat, lng], ...]
+     */
+    public function cleanPoints(array $points): array
+    {
         $kept = [];
         $last = null;
 
-        foreach ($pings as $p) {
-            if ($p->accuracy !== null && $p->accuracy > self::MAX_ACCURACY_M) {
+        foreach ($points as $point) {
+            if (($point['accuracy'] ?? null) !== null && $point['accuracy'] > self::MAX_ACCURACY_M) {
                 continue;
             }
 
-            $point = ['lat' => (float) $p->latitude, 'lng' => (float) $p->longitude, 'time' => $p->recorded_at];
-
             if ($last !== null) {
-                $meters  = $this->simplifier->haversineMeters($last['lat'], $last['lng'], $point['lat'], $point['lng']);
-                $seconds = max(1, abs($point['time']->getTimestamp() - $last['time']->getTimestamp()));
+                $meters = $this->simplifier->haversineMeters($last['lat'], $last['lng'], $point['lat'], $point['lng']);
 
-                // Camión detenido o salto imposible del GPS
-                if ($meters < 1 || ($meters / $seconds) * 3.6 > self::MAX_SPEED_KMH) {
+                if ($meters < 1) {
                     continue;
+                }
+
+                if (!empty($point['time']) && !empty($last['time'])) {
+                    $seconds = max(1, abs($point['time']->getTimestamp() - $last['time']->getTimestamp()));
+
+                    if (($meters / $seconds) * 3.6 > self::MAX_SPEED_KMH) {
+                        continue;
+                    }
                 }
             }
 
@@ -186,7 +212,7 @@ class RouteGeometryService
             $last   = $point;
         }
 
-        return $this->simplifyLatLng(array_map(fn ($p) => [$p['lat'], $p['lng']], $kept));
+        return array_map(fn ($p) => [$p['lat'], $p['lng']], $kept);
     }
 
     public function simplifyLatLng(array $latLng, float $epsilon = self::SIMPLIFY_EPS_M): array
@@ -237,6 +263,21 @@ class RouteGeometryService
     public function geoJsonToLatLng(array $geometry): array
     {
         return array_map(fn ($c) => [(float) $c[1], (float) $c[0]], $geometry['coordinates'] ?? []);
+    }
+
+    public function summary(Route $route): array
+    {
+        $path = $this->path($route);
+
+        return [
+            'route'            => ['id' => $route->id, 'name' => $route->name, 'code' => $route->code],
+            'source'           => $route->geometry_source,
+            'distance_m'       => $route->distance_m,
+            'points_count'     => count($path),
+            'served_locations' => $route->locationMatches()->count(),
+            'updated_at'       => $route->updated_at?->toIso8601String(),
+            'path'             => $path,
+        ];
     }
 
     public function path(Route $route): array
