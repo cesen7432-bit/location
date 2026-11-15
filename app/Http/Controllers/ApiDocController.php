@@ -31,6 +31,7 @@ namespace App\Http\Controllers;
  * @OA\Tag(name="Auth",          description="Autenticación y sesión")
  * @OA\Tag(name="Public",        description="Endpoints sin autenticación — horarios y tracking live")
  * @OA\Tag(name="Collector",     description="Endpoints para recolectores autenticados")
+ * @OA\Tag(name="Me",            description="Usuario final: ubicaciones, basura, notificaciones y push")
  * @OA\Tag(name="Neighborhoods", description="Catálogo de barrios (admin)")
  * @OA\Tag(name="Routes",        description="Gestión de rutas GPS (admin)")
  * @OA\Tag(name="Schedules",     description="Horarios semanales por ruta (admin)")

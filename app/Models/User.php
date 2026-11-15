@@ -29,6 +29,7 @@ class User extends Authenticatable
         'role',
         'phone',
         'active',
+        'notifications_enabled',
     ];
 
     protected $hidden = [
@@ -42,7 +43,28 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'active' => 'boolean',
+            'notifications_enabled' => 'boolean',
         ];
+    }
+
+    public function isEndUser(): bool
+    {
+        return $this->role === 'user';
+    }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(UserLocation::class);
+    }
+
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    public function runs(): HasMany
+    {
+        return $this->hasMany(RouteRun::class, 'collector_id');
     }
 
     public function isCollector(): bool

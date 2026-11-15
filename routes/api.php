@@ -4,10 +4,15 @@ use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CollectorController;
 use App\Http\Controllers\CollectorUserController;
+use App\Http\Controllers\GarbageController;
 use App\Http\Controllers\NeighborhoodController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\RouteController;
+use App\Http\Controllers\RouteGeometryController;
+use App\Http\Controllers\RouteRunController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\UserLocationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,6 +38,9 @@ Route::prefix('public')->group(function () {
 
     // Planned GPS polyline for a route (neighborhood stops in order)
     Route::get('routes/{route}/points', [PublicController::class, 'routePoints']);
+
+    Route::get('routes/{route}/geometry', [RouteGeometryController::class, 'show']);
+    Route::get('push/public-key', [NotificationController::class, 'publicKey']);
 });
 
 /*
@@ -42,9 +50,12 @@ Route::prefix('public')->group(function () {
 */
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
+        Route::put('me', [AuthController::class, 'updateMe']);
+        Route::delete('me', [AuthController::class, 'deleteMe']);
         Route::post('logout', [AuthController::class, 'logout']);
     });
 });
@@ -56,6 +67,38 @@ Route::prefix('auth')->group(function () {
 */
 Route::middleware(['auth:sanctum', 'role:collector,admin'])->prefix('collector')->group(function () {
     Route::get('my-routes', [CollectorController::class, 'myRoutes']);
+
+    Route::get('runs', [RouteRunController::class, 'mine']);
+    Route::get('runs/current', [RouteRunController::class, 'current']);
+    Route::post('runs/start', [RouteRunController::class, 'start']);
+    Route::post('runs/finish', [RouteRunController::class, 'finish']);
+
+    Route::get('garbage-points', [GarbageController::class, 'points']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Usuario autenticado (cualquier rol): ubicaciones y notificaciones
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->prefix('me')->group(function () {
+    Route::get('locations', [UserLocationController::class, 'index']);
+    Route::post('locations', [UserLocationController::class, 'store']);
+    Route::get('locations/{id}', [UserLocationController::class, 'show'])->whereNumber('id');
+    Route::put('locations/{id}', [UserLocationController::class, 'update'])->whereNumber('id');
+    Route::delete('locations/{id}', [UserLocationController::class, 'destroy'])->whereNumber('id');
+    Route::patch('locations/{id}/notifications', [UserLocationController::class, 'notifications'])->whereNumber('id');
+    Route::patch('locations/{id}/garbage', [UserLocationController::class, 'garbage'])->whereNumber('id');
+
+    Route::get('notifications/settings', [NotificationController::class, 'settings']);
+    Route::patch('notifications/settings', [NotificationController::class, 'updateSettings']);
+    Route::get('notifications', [NotificationController::class, 'index']);
+    Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+    Route::post('notifications/{id}/read', [NotificationController::class, 'read']);
+
+    Route::post('push-subscriptions', [NotificationController::class, 'subscribe']);
+    Route::delete('push-subscriptions', [NotificationController::class, 'unsubscribe']);
+    Route::post('push-subscriptions/test', [NotificationController::class, 'test']);
 });
 
 /*
@@ -91,6 +134,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::put('points/{point}', [RouteController::class, 'updatePoint']);
         Route::delete('points/{point}', [RouteController::class, 'destroyPoint']);
 
+        Route::get('geometry', [RouteGeometryController::class, 'show']);
+        Route::put('geometry', [RouteGeometryController::class, 'store']);
+        Route::post('geometry/from-tracking', [RouteGeometryController::class, 'fromTracking']);
+        Route::delete('geometry', [RouteGeometryController::class, 'destroy']);
+
         // Weekly schedule for this route
         // GET    → full week view (all 7 days, null if not configured)
         // POST   → add or update a single day
@@ -114,4 +162,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('tracking/today', [CollectorController::class, 'todayTracking']);
     Route::get('collector/{collectorId}/report', [CollectorController::class, 'routeReport']);
     Route::get('collector/{collectorId}/raw-tracking', [CollectorController::class, 'rawTracking']);
+
+    Route::get('runs', [RouteRunController::class, 'index']);
+    Route::get('runs/{run}', [RouteRunController::class, 'show']);
+    Route::post('runs/{run}/finish', [RouteRunController::class, 'adminFinish']);
+    Route::get('collectors/{collector}/day-track', [RouteRunController::class, 'dayTrack'])->whereNumber('collector');
+    Route::get('garbage-points', [GarbageController::class, 'points']);
 });

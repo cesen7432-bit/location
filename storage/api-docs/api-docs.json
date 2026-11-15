@@ -15,6 +15,289 @@
         }
     ],
     "paths": {
+        "/api/admin/api-keys": {
+            "get": {
+                "tags": [
+                    "ApiKeys"
+                ],
+                "summary": "Listar API keys",
+                "description": "Lista las API keys (nunca retorna la key completa, solo su prefijo).",
+                "operationId": "apiKeysIndex",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Buscar por alias",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "active",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "ApiKeys"
+                ],
+                "summary": "Crear API key",
+                "description": "Genera una nueva API key. La key completa se retorna UNA SOLA VEZ en el campo `key`; guárdela en un lugar seguro.",
+                "operationId": "apiKeysStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "GPS Camión 12"
+                                    },
+                                    "collector_id": {
+                                        "description": "Recolector asociado. Si se omite, el ping debe enviar collector_id.",
+                                        "type": "integer",
+                                        "example": 3,
+                                        "nullable": true
+                                    },
+                                    "expires_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Creada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/api-keys/{id}": {
+            "get": {
+                "tags": [
+                    "ApiKeys"
+                ],
+                "summary": "Ver API key",
+                "operationId": "apiKeysShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrada"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "ApiKeys"
+                ],
+                "summary": "Actualizar API key",
+                "description": "Cambia alias, recolector asociado, estado o expiración. No modifica la key.",
+                "operationId": "apiKeysUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "GPS Camión 12"
+                                    },
+                                    "collector_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean"
+                                    },
+                                    "expires_at": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "ApiKeys"
+                ],
+                "summary": "Eliminar API key",
+                "operationId": "apiKeysDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eliminada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/api-keys/{id}/regenerate": {
+            "post": {
+                "tags": [
+                    "ApiKeys"
+                ],
+                "summary": "Regenerar API key",
+                "description": "Invalida la key actual y genera una nueva conservando alias y configuración. La nueva key se retorna una sola vez.",
+                "operationId": "apiKeysRegenerate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/auth/login": {
             "post": {
                 "tags": [
@@ -221,6 +504,125 @@
                         "sanctum": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Actualizar mi perfil",
+                "description": "Para cambiar la contraseña se exige current_password. Al cambiarla se cierran las demás sesiones.",
+                "operationId": "b9b42ee4d1334ee9ef856bcbcb24eecc",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "current_password": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Eliminar mi cuenta",
+                "description": "Solo para usuarios finales. Borra la cuenta, sus ubicaciones, notificaciones y suscripciones push.",
+                "operationId": "5ae63452b6e1fc8ea3e422b067cb7cd3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "password"
+                                ],
+                                "properties": {
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cuenta eliminada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Solo usuarios finales",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
             }
         },
         "/api/auth/logout": {
@@ -260,13 +662,87 @@
                 ]
             }
         },
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Registro de usuario final",
+                "description": "Crea una cuenta con rol user y devuelve el token, igual que el login. Máximo 5 intentos por minuto.",
+                "operationId": "d764dd091cc4494ae0baf360b03319f3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "María López"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "maria@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Secreta123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "Secreta123"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "0991234567",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cuenta creada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/collector/ping": {
             "post": {
                 "tags": [
                     "Collector"
                 ],
-                "summary": "Enviar ping GPS",
-                "description": "Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Emite WebSocket solo si se movio >15 m o pasaron >10 s desde el ultimo broadcast.",
+                "summary": "Enviar ping GPS (dispositivo)",
+                "description": "Autenticado con header X-API-Key. El dispositivo envia pings siempre que el camion esta encendido. Si el recolector tiene un recorrido en curso (POST /api/collector/runs/start), el ping se asocia a esa ruta, se calcula el avance y se avisa a los usuarios cercanos. Cada ping se emite por WebSocket (canal collectors.live, evento location.updated).",
                 "operationId": "collectorPing",
                 "requestBody": {
                     "required": true,
@@ -274,24 +750,19 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "route_id",
                                     "latitude",
                                     "longitude"
                                 ],
                                 "properties": {
-                                    "route_id": {
-                                        "type": "integer",
-                                        "example": 1
-                                    },
                                     "latitude": {
                                         "type": "number",
                                         "format": "float",
-                                        "example": 4.5981
+                                        "example": -3.99312
                                     },
                                     "longitude": {
                                         "type": "number",
                                         "format": "float",
-                                        "example": -74.0758
+                                        "example": -79.20441
                                     },
                                     "accuracy": {
                                         "type": "number",
@@ -299,14 +770,15 @@
                                         "example": 5,
                                         "nullable": true
                                     },
-                                    "status": {
-                                        "type": "string",
-                                        "example": "on_route",
-                                        "enum": [
-                                            "on_route",
-                                            "paused",
-                                            "completed"
-                                        ]
+                                    "collector_id": {
+                                        "description": "Solo si la API key no tiene recolector asociado",
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "route_id": {
+                                        "description": "Opcional (compatibilidad). Si hay recorrido en curso se usa su ruta.",
+                                        "type": "integer",
+                                        "nullable": true
                                     }
                                 },
                                 "type": "object"
@@ -320,34 +792,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "allOf": [
-                                        {
-                                            "$ref": "#/components/schemas/ApiResponse"
-                                        },
-                                        {
-                                            "properties": {
-                                                "data": {
-                                                    "properties": {
-                                                        "recorded": {
-                                                            "type": "boolean",
-                                                            "example": true
-                                                        },
-                                                        "broadcast": {
-                                                            "type": "boolean",
-                                                            "example": false
-                                                        },
-                                                        "session_id": {
-                                                            "type": "integer",
-                                                            "example": 7
-                                                        }
-                                                    },
-                                                    "type": "object"
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    ]
+                                    "$ref": "#/components/schemas/ApiResponse"
                                 }
                             }
                         }
@@ -365,7 +810,7 @@
                 },
                 "security": [
                     {
-                        "sanctum": []
+                        "apiKey": []
                     }
                 ]
             }
@@ -979,6 +1424,344 @@
                 ]
             }
         },
+        "/api/admin/collectors": {
+            "get": {
+                "tags": [
+                    "Collectors"
+                ],
+                "summary": "Listar recolectores",
+                "operationId": "collectorsIndex",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Nombre, email o teléfono",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "active",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Collectors"
+                ],
+                "summary": "Crear recolector",
+                "description": "Crea un usuario con rol collector. Con create_api_key=true genera además su API key (se muestra una sola vez).",
+                "operationId": "collectorsStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Carlos Pérez"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "carlos@ejemplo.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "Secreta123"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "example": "3104445566",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "create_api_key": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "api_key_name": {
+                                        "type": "string",
+                                        "example": "GPS Camión 12",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Creado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validacion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/collectors/{id}": {
+            "get": {
+                "tags": [
+                    "Collectors"
+                ],
+                "summary": "Ver recolector",
+                "description": "Incluye sus API keys (sin la key completa).",
+                "operationId": "collectorsShow",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Collectors"
+                ],
+                "summary": "Actualizar recolector",
+                "description": "Todos los campos opcionales. Si se desactiva, se cierran sus sesiones y sus API keys dejan de funcionar.",
+                "operationId": "collectorsUpdate",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Collectors"
+                ],
+                "summary": "Eliminar recolector",
+                "description": "Solo si no tiene historial de recorridos ni asignaciones. Si lo tiene, responde 409: desactívelo en su lugar.",
+                "operationId": "collectorsDestroy",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eliminado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Tiene historial"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/garbage-points": {
+            "get": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Puntos con basura afuera",
+                "description": "Ubicaciones donde el usuario marcó que sacó la basura (últimas 24 h). Sin datos personales: solo coordenadas. Con route_id se limita a las ubicaciones de esa ruta.",
+                "operationId": "a53c951953ce384003378c8f4aa6463c",
+                "parameters": [
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/garbage-points": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Puntos con basura afuera (admin)",
+                "operationId": "18ea1d51e2195a4df2f41ea1af8c267c",
+                "parameters": [
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/admin/neighborhoods": {
             "get": {
                 "tags": [
@@ -1493,6 +2276,334 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/public/push/public-key": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Clave pública VAPID",
+                "description": "El frontend la usa en pushManager.subscribe({applicationServerKey}).",
+                "operationId": "4de6baac80e0b01359ebab7ef8270e6a",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/me/notifications/settings": {
+            "get": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Estado de mis notificaciones",
+                "operationId": "7e6b94d1f9250d623e336e133aa754ac",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Activar/desactivar todas mis notificaciones",
+                "operationId": "b5dbd39ff6c9e822b42a87c06fa940d7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "enabled"
+                                ],
+                                "properties": {
+                                    "enabled": {
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/notifications": {
+            "get": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Historial de notificaciones",
+                "operationId": "4cfd74b72b25705edcadfb10768745fb",
+                "parameters": [
+                    {
+                        "name": "unread",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/notifications/{id}/read": {
+            "post": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Marcar notificación como leída",
+                "operationId": "b7efb8d1d2e5369d54bbc3ba8e99683e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/notifications/read-all": {
+            "post": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Marcar todas como leídas",
+                "operationId": "82756c03bdc00c440f2e2181db20a05e",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/push-subscriptions": {
+            "post": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Registrar dispositivo para push",
+                "description": "Enviar tal cual el resultado de pushManager.subscribe(...).toJSON().",
+                "operationId": "96e0951f5670291713b5abfcee2a2ae8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "endpoint",
+                                    "keys"
+                                ],
+                                "properties": {
+                                    "endpoint": {
+                                        "type": "string",
+                                        "example": "https://fcm.googleapis.com/fcm/send/abc..."
+                                    },
+                                    "keys": {
+                                        "properties": {
+                                            "p256dh": {
+                                                "type": "string"
+                                            },
+                                            "auth": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "content_encoding": {
+                                        "type": "string",
+                                        "example": "aes128gcm"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Quitar dispositivo",
+                "operationId": "5cdc9ca7c3b3098c962390bb05cc8fd8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "endpoint"
+                                ],
+                                "properties": {
+                                    "endpoint": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/push-subscriptions/test": {
+            "post": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Enviar push de prueba",
+                "description": "Envía una notificación de prueba a todos mis dispositivos.",
+                "operationId": "bf0d77d51421a520388ea7967d7b79e7",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
                                 }
                             }
                         }
@@ -2701,6 +3812,720 @@
                 ]
             }
         },
+        "/api/admin/routes/{route}/geometry": {
+            "get": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Trazado de la ruta",
+                "operationId": "6e29a0532d4dd0c209c866a4d8ad1660",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Cargar trazado (archivo o JSON)",
+                "description": "Acepta multipart 'file' (.gpx, .kml, .geojson, .json), o JSON con 'geometry' (GeoJSON) o 'path' ([{lat,lng}]). simplify=true (por defecto) reduce puntos a ~5 m de tolerancia.",
+                "operationId": "47bcf78e8d69865eb210723dd0351168",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "simplify": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "geometry": {
+                                        "type": "object",
+                                        "example": {
+                                            "type": "LineString",
+                                            "coordinates": [
+                                                [
+                                                    -79.2044,
+                                                    -3.9931
+                                                ],
+                                                [
+                                                    -79.2043,
+                                                    -3.9928
+                                                ]
+                                            ]
+                                        }
+                                    },
+                                    "path": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "lat": {
+                                                    "type": "number"
+                                                },
+                                                "lng": {
+                                                    "type": "number"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "simplify": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Archivo o línea inválida",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Eliminar trazado",
+                "operationId": "6346347967072f7d995e0d0bb2a6675f",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/public/routes/{route}/geometry": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Trazado de la ruta (público)",
+                "description": "Línea de la ruta como [{lat, lng}] en orden de recorrido, para dibujarla en el mapa.",
+                "operationId": "32db01367d114ca9a8a040d9d309be92",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Ruta no disponible",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/routes/{route}/geometry/from-tracking": {
+            "post": {
+                "tags": [
+                    "Routes"
+                ],
+                "summary": "Crear trazado desde lo grabado por el GPS",
+                "description": "Con run_id usa los pings de ese recorrido. Si no, collector_id + date (y opcionalmente from/to en HH:MM). Descarta pings imprecisos (> 30 m) y saltos imposibles, y simplifica.",
+                "operationId": "9f29b682f7576252e0df0b1c7d845180",
+                "parameters": [
+                    {
+                        "name": "route",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "run_id": {
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "collector_id": {
+                                        "type": "integer",
+                                        "example": 4
+                                    },
+                                    "date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-11-15"
+                                    },
+                                    "from": {
+                                        "type": "string",
+                                        "example": "07:00"
+                                    },
+                                    "to": {
+                                        "type": "string",
+                                        "example": "11:30"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Sin pings suficientes",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/runs/start": {
+            "post": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Iniciar ruta",
+                "description": "Marca el inicio de la ruta. Solo rutas asignadas al recolector para hoy (POST /api/admin/collector/assign-route). Si no se envian coordenadas se usa la ultima posicion del dispositivo (<= 10 min).",
+                "operationId": "e0de65f7ee2162bccdb869d3705b34a5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "route_id"
+                                ],
+                                "properties": {
+                                    "route_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": -3.99312
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -79.20441
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ruta iniciada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Ruta no asignada para hoy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ya hay una ruta en curso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/runs/finish": {
+            "post": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Finalizar ruta",
+                "description": "Cierra la ruta en curso del recolector. Calcula distancia recorrida y cantidad de pings.",
+                "operationId": "82f9b56e5f79ffac3056ad4b85edd6b3",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": -4.01025
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -79.1987
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ruta finalizada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No hay ruta en curso",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/runs/current": {
+            "get": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Ruta en curso",
+                "description": "Devuelve la ruta en curso del recolector o null.",
+                "operationId": "20793ff1ccdd7c29b284af617488aa9d",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/collector/runs": {
+            "get": {
+                "tags": [
+                    "Collector"
+                ],
+                "summary": "Mis recorridos",
+                "operationId": "7fa4b3804d0f6fb7295c7b758501ff55",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/runs": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Listar recorridos",
+                "description": "Inicio (hora y ubicacion), fin (hora y ubicacion), duracion, distancia y avance de cada recorrido.",
+                "operationId": "afba728ed165b1a2ce59ba7004dfd94d",
+                "parameters": [
+                    {
+                        "name": "collector_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "route_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "in_progress",
+                                "completed"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/runs/{run}": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Detalle de recorrido",
+                "description": "Recorrido real (simplificado), trazado planificado de la ruta y estadisticas.",
+                "operationId": "763ce3747e9d0cd770662ad66386e6e2",
+                "parameters": [
+                    {
+                        "name": "run",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/runs/{run}/finish": {
+            "post": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Cerrar recorrido olvidado",
+                "description": "Cierra un recorrido que el recolector no finalizo. La hora y ubicacion de fin son las del ultimo ping del recorrido.",
+                "operationId": "ebf53a27ccf7944773692735eb6b4e64",
+                "parameters": [
+                    {
+                        "name": "run",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Ya finalizado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/collectors/{collector}/day-track": {
+            "get": {
+                "tags": [
+                    "Tracking"
+                ],
+                "summary": "Recorrido completo del dia",
+                "description": "Todo lo que grabo el dispositivo en el dia, dividido en tramos: 'run' (durante una ruta) e 'idle' (fuera de ruta), con los puntos de inicio y fin de cada ruta.",
+                "operationId": "5db6858b44a545855e8c28bd39a385b6",
+                "parameters": [
+                    {
+                        "name": "collector",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/api/admin/routes/{route}/schedules": {
             "get": {
                 "tags": [
@@ -3320,29 +5145,395 @@
                     }
                 ]
             }
+        },
+        "/api/me/locations": {
+            "get": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Mis ubicaciones",
+                "description": "Cada ubicación incluye las rutas que pasan por ahí (a <= 150 m) con su horario.",
+                "operationId": "f608e2b6444cfbf32b01e1b3d5a70e61",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Agregar ubicación",
+                "operationId": "a7d5eb91ea09b181cedd4b3c4fdee317",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "label",
+                                    "latitude",
+                                    "longitude"
+                                ],
+                                "properties": {
+                                    "label": {
+                                        "type": "string",
+                                        "example": "Casa"
+                                    },
+                                    "address": {
+                                        "type": "string",
+                                        "example": "Av. Universitaria y Mercadillo",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number",
+                                        "example": -3.99312
+                                    },
+                                    "longitude": {
+                                        "type": "number",
+                                        "example": -79.20441
+                                    },
+                                    "notify_enabled": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "notify_distance_m": {
+                                        "type": "integer",
+                                        "example": 500,
+                                        "maximum": 2000,
+                                        "minimum": 100
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Creada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Error de validación",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/locations/{id}": {
+            "get": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Detalle de ubicación",
+                "operationId": "447ef5eb6a1e1dea028a0c7932dd9fe8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No encontrada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Editar ubicación",
+                "description": "Si cambian las coordenadas se recalculan las rutas que pasan por ahí.",
+                "operationId": "9917a42ab9b9333cda8a22ff99935805",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "latitude": {
+                                        "type": "number"
+                                    },
+                                    "longitude": {
+                                        "type": "number"
+                                    },
+                                    "notify_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "notify_distance_m": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Eliminar ubicación",
+                "operationId": "bb20fb782686b8538cb5b3c82e8dc6fe",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/locations/{id}/notifications": {
+            "patch": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Activar/desactivar avisos de una ubicación",
+                "operationId": "ca977365a8875d7fbc218255538b9654",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "enabled"
+                                ],
+                                "properties": {
+                                    "enabled": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "distance_m": {
+                                        "type": "integer",
+                                        "example": 500,
+                                        "maximum": 2000,
+                                        "minimum": 100
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/me/locations/{id}/garbage": {
+            "patch": {
+                "tags": [
+                    "Me"
+                ],
+                "summary": "Marcar si saqué la basura",
+                "description": "out=true: la basura está afuera. Se limpia sola cuando el camión pasa por la ubicación durante un recorrido, o a las 24 h.",
+                "operationId": "788e1d1b92021869d7bc8f56b36ed65b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "out"
+                                ],
+                                "properties": {
+                                    "out": {
+                                        "type": "boolean",
+                                        "example": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
         }
     },
     "components": {
         "schemas": {
             "ApiResponse": {
+                "description": "Respuesta base de todos los endpoints",
                 "properties": {
-                    "success": {
-                        "type": "boolean",
-                        "example": true
+                    "code": {
+                        "description": "1 = éxito, -1 = error",
+                        "type": "integer",
+                        "example": 1,
+                        "enum": [
+                            1,
+                            -1
+                        ]
                     },
                     "message": {
                         "type": "string",
                         "example": "OK"
                     },
-                    "data": {
+                    "result": {
                         "nullable": true
-                    },
-                    "errors": {
-                        "nullable": true
-                    },
-                    "code": {
-                        "type": "integer",
-                        "example": 200
                     }
                 },
                 "type": "object"
@@ -3545,19 +5736,15 @@
             },
             "ValidationError": {
                 "properties": {
-                    "success": {
-                        "type": "boolean",
-                        "example": false
+                    "code": {
+                        "type": "integer",
+                        "example": -1
                     },
                     "message": {
                         "type": "string",
                         "example": "Error de validación"
                     },
-                    "data": {
-                        "example": null,
-                        "nullable": true
-                    },
-                    "errors": {
+                    "result": {
                         "properties": {
                             "field": {
                                 "type": "array",
@@ -3568,10 +5755,6 @@
                             }
                         },
                         "type": "object"
-                    },
-                    "code": {
-                        "type": "integer",
-                        "example": 422
                     }
                 },
                 "type": "object"
@@ -3583,6 +5766,12 @@
                 "description": "Token Sanctum. Obtenerlo en POST /api/auth/login",
                 "bearerFormat": "JWT",
                 "scheme": "bearer"
+            },
+            "apiKey": {
+                "type": "apiKey",
+                "description": "API key de dispositivo. Crearla en POST /api/admin/api-keys",
+                "name": "X-API-Key",
+                "in": "header"
             }
         }
     },
@@ -3600,6 +5789,10 @@
             "description": "Endpoints para recolectores autenticados"
         },
         {
+            "name": "Me",
+            "description": "Usuario final: ubicaciones, basura, notificaciones y push"
+        },
+        {
             "name": "Neighborhoods",
             "description": "Catálogo de barrios (admin)"
         },
@@ -3610,6 +5803,14 @@
         {
             "name": "Schedules",
             "description": "Horarios semanales por ruta (admin)"
+        },
+        {
+            "name": "Collectors",
+            "description": "Gestión de usuarios recolectores (admin)"
+        },
+        {
+            "name": "ApiKeys",
+            "description": "Gestión de API keys para dispositivos (admin)"
         },
         {
             "name": "Tracking",

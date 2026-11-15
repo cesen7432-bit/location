@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\CollectorLocationUpdated;
 use App\Models\CollectorRoute;
 use App\Models\CollectorSession;
 use App\Models\CollectorTracking;
 use App\Models\User;
+use App\Services\CollectorTrackingService;
 use App\Services\RouteSimplificationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CollectorController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(private readonly RouteSimplificationService $simplifier) {}
+    public function __construct(
+        private readonly RouteSimplificationService $simplifier,
+        private readonly CollectorTrackingService $tracking,
+    ) {}
 
     // -------------------------------------------------------------------------
     // Collector endpoints (role: collector)
@@ -26,126 +30,45 @@ class CollectorController extends Controller
      * @OA\Post(
      *     path="/api/collector/ping",
      *     tags={"Collector"},
-     *     summary="Enviar ping GPS",
-     *     description="Autenticado con header X-API-Key. Si la key no esta asociada a un recolector, se debe enviar collector_id. Registra la posicion GPS del recolector. Persiste en breadcrumb log y actualiza la sesion activa. Cada ping guardado se emite por WebSocket (canal collectors.live, evento location.updated). broadcast=false indica que el ping se guardo pero el envio fallo.",
+     *     summary="Enviar ping GPS (dispositivo)",
+     *     description="Autenticado con header X-API-Key. El dispositivo envia pings siempre que el camion esta encendido. Si el recolector tiene un recorrido en curso (POST /api/collector/runs/start), el ping se asocia a esa ruta, se calcula el avance y se avisa a los usuarios cercanos. Cada ping se emite por WebSocket (canal collectors.live, evento location.updated).",
      *     operationId="collectorPing",
      *     security={{"apiKey":{}}},
      *     @OA\RequestBody(required=true,
      *         @OA\JsonContent(
-     *             required={"route_id","latitude","longitude"},
-     *             @OA\Property(property="route_id",  type="integer", example=1),
+     *             required={"latitude","longitude"},
+     *             @OA\Property(property="latitude",  type="number", format="float", example=-3.99312),
+     *             @OA\Property(property="longitude", type="number", format="float", example=-79.20441),
+     *             @OA\Property(property="accuracy",  type="number", format="float", example=5.0, nullable=true),
      *             @OA\Property(property="collector_id", type="integer", example=3, description="Solo si la API key no tiene recolector asociado"),
-     *             @OA\Property(property="latitude",  type="number",  format="float", example=4.5981),
-     *             @OA\Property(property="longitude", type="number",  format="float", example=-74.0758),
-     *             @OA\Property(property="accuracy",  type="number",  format="float", example=5.0, nullable=true),
-     *             @OA\Property(property="status",    type="string",  example="on_route",
-     *                 enum={"on_route","paused","completed"}
-     *             )
+     *             @OA\Property(property="route_id",  type="integer", nullable=true, description="Opcional (compatibilidad). Si hay recorrido en curso se usa su ruta.")
      *         )
      *     ),
-     *     @OA\Response(response=200, description="Ping registrado",
-     *         @OA\JsonContent(allOf={@OA\Schema(ref="#/components/schemas/ApiResponse")},
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="recorded",   type="boolean", example=true),
-     *                 @OA\Property(property="broadcast",  type="boolean", example=false),
-     *                 @OA\Property(property="session_id", type="integer", example=7)
-     *             )
-     *         )
-     *     ),
+     *     @OA\Response(response=200, description="Ping registrado", @OA\JsonContent(ref="#/components/schemas/ApiResponse")),
      *     @OA\Response(response=422, description="Error de validacion", @OA\JsonContent(ref="#/components/schemas/ValidationError"))
      * )
-     *
-     * Receive a raw GPS ping from the collector.
-     * - Persists every single ping to collector_tracking (breadcrumb log).
-     * - Updates collector_sessions (current state, fast reads).
-     * - Broadcasts every saved ping via WebSocket (apps-cecom.cloud), synchronously.
      */
     public function ping(Request $request): JsonResponse
     {
-        // Authenticated via X-API-Key. If the key is linked to a collector,
-        // $request->user() is that collector; otherwise collector_id must be sent.
+        // Si la API key está asociada a un recolector, user() es ese recolector
         $keyCollector = $request->user();
 
         $data = $request->validate([
-            'route_id'     => 'required|exists:routes,id',
+            'route_id'     => 'nullable|integer|exists:routes,id',
             'latitude'     => 'required|numeric|between:-90,90',
             'longitude'    => 'required|numeric|between:-180,180',
-            'accuracy'     => 'nullable|numeric|min:0', // GPS accuracy in meters
-            'status'       => 'sometimes|in:on_route,paused,completed',
+            'accuracy'     => 'nullable|numeric|min:0',
+            'status'       => 'sometimes|in:on_route,paused,completed,idle',
             'collector_id' => [
                 $keyCollector ? 'prohibited' : 'required',
                 'integer',
-                \Illuminate\Validation\Rule::exists('users', 'id')->where('role', 'collector')->where('active', true),
+                Rule::exists('users', 'id')->where('role', 'collector')->where('active', true),
             ],
         ]);
 
         $collector = $keyCollector ?? User::findOrFail($data['collector_id']);
-        $now       = now();
 
-        // 1. Persist every ping to the raw breadcrumb log
-        CollectorTracking::create([
-            'collector_id'  => $collector->id,
-            'route_id'      => $data['route_id'],
-            'latitude'      => $data['latitude'],
-            'longitude'     => $data['longitude'],
-            'accuracy'      => $data['accuracy'] ?? null,
-            'tracking_date' => $now->toDateString(),
-            'recorded_at'   => $now,
-        ]);
-
-        // 2. Update (or create) the session — the "current state" row
-        $session = CollectorSession::updateOrCreate(
-            [
-                'collector_id'  => $collector->id,
-                'route_id'      => $data['route_id'],
-                'tracking_date' => $now->toDateString(),
-            ],
-            [
-                'current_latitude'  => $data['latitude'],
-                'current_longitude' => $data['longitude'],
-                'status'            => $data['status'] ?? 'on_route',
-                'last_seen_at'      => $now,
-            ]
-        );
-
-        // Set started_at only on first creation — never overwrite it on updates
-        if ($session->wasRecentlyCreated) {
-            $session->started_at = $now;
-            $session->saveQuietly();
-        }
-
-        // 3. Broadcast every saved ping, synchronously (no queue worker needed).
-        //    A WebSocket failure must never lose the ping: it is already saved,
-        //    so the error is only logged and reported as broadcast=false.
-        $broadcasted = false;
-
-        try {
-            broadcast(new CollectorLocationUpdated([
-                'collector_id'   => $collector->id,
-                'collector_name' => $collector->name,
-                'route_id'       => (int) $data['route_id'],
-                'latitude'       => (float) $data['latitude'],
-                'longitude'      => (float) $data['longitude'],
-                'status'         => $session->status,
-                'last_seen_at'   => $now->toIso8601String(),
-            ]));
-
-            $broadcasted = true;
-
-            $session->update([
-                'last_broadcast_lat' => $data['latitude'],
-                'last_broadcast_lng' => $data['longitude'],
-                'last_broadcast_at'  => $now,
-            ]);
-        } catch (\Throwable $e) {
-            report($e);
-        }
-
-        return $this->success([
-            'recorded'   => true,
-            'broadcast'  => $broadcasted,
-            'session_id' => $session->id,
-        ], 'Ping registrado');
+        return $this->success($this->tracking->recordPing($collector, $data), 'Ping registrado');
     }
 
     /**
@@ -327,22 +250,28 @@ class CollectorController extends Controller
     {
         $sessions = CollectorSession::with([
             'collector:id,name,phone',
-            'route:id,name,zone',
+            'route:id,name,code,zone',
         ])
             ->where('tracking_date', today())
+            ->orderByDesc('last_seen_at')
             ->get()
             ->map(fn ($s) => [
                 'collector_id'   => $s->collector_id,
                 'collector_name' => $s->collector->name ?? null,
                 'collector_phone'=> $s->collector->phone ?? null,
-                'route'          => [
+                'route'          => $s->route_id ? [
                     'id'   => $s->route_id,
                     'name' => $s->route->name ?? null,
+                    'code' => $s->route->code ?? null,
                     'zone' => $s->route->zone ?? null,
-                ],
+                ] : null,
+                'run_id'         => $s->run_id,
                 'latitude'       => $s->current_latitude,
                 'longitude'      => $s->current_longitude,
                 'status'         => $s->status,
+                'progress'       => $s->progress,
+                'off_route'      => (bool) $s->off_route,
+                'distance_to_route_m' => $s->distance_to_route_m,
                 'started_at'     => $s->started_at?->toIso8601String(),
                 'last_seen_at'   => $s->last_seen_at?->toIso8601String(),
             ]);
@@ -492,19 +421,19 @@ class CollectorController extends Controller
     public function rawTracking(Request $request, int $collectorId): JsonResponse
     {
         $request->validate([
-            'route_id' => 'required|exists:routes,id',
+            'route_id' => 'nullable|exists:routes,id',
             'date'     => 'required|date',
         ]);
 
         $pings = CollectorTracking::where('collector_id', $collectorId)
-            ->where('route_id', $request->input('route_id'))
+            ->when($request->filled('route_id'), fn ($q) => $q->where('route_id', $request->input('route_id')))
             ->where('tracking_date', $request->input('date'))
             ->orderBy('recorded_at')
-            ->get(['latitude', 'longitude', 'accuracy', 'recorded_at']);
+            ->get(['latitude', 'longitude', 'accuracy', 'route_id', 'run_id', 'recorded_at']);
 
         return $this->success([
             'collector_id' => $collectorId,
-            'route_id'     => (int) $request->input('route_id'),
+            'route_id'     => $request->filled('route_id') ? (int) $request->input('route_id') : null,
             'date'         => $request->input('date'),
             'count'        => $pings->count(),
             'pings'        => $pings,

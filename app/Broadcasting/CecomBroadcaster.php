@@ -8,16 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
-/**
- * Broadcast driver for apps-cecom.cloud.
- *
- * Publishes each event with:
- *   POST {url}/api/apps/{app_id}/events
- *   X-App-Key / X-App-Secret
- *   { "channel": "...", "event": "...", "data": {...} }
- *
- * Only public channels are supported (no private/presence auth endpoint).
- */
 class CecomBroadcaster extends Broadcaster
 {
     public function __construct(private readonly array $config) {}

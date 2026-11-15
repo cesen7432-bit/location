@@ -17,7 +17,7 @@ class CollectorRoute extends Model
     protected function casts(): array
     {
         return [
-            'assigned_date' => 'date',
+            'assigned_date' => 'date:Y-m-d',
             'active' => 'boolean',
         ];
     }

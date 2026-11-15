@@ -41,9 +41,13 @@ class RouteController extends Controller
         $routes = Route::withCount('points')->with('schedules')->get()->map(fn (Route $r) => [
             'id'           => $r->id,
             'name'         => $r->name,
+            'code'         => $r->code,
             'description'  => $r->description,
             'zone'         => $r->zone,
+            'shift'        => $r->shift,
             'active'       => $r->active,
+            'has_geometry' => $r->geometry_source !== null,
+            'distance_m'   => $r->distance_m,
             'total_points' => $r->points_count,
             'schedule_days'=> $r->schedules->where('active', true)->pluck('day_of_week')->values(),
         ]);
@@ -83,6 +87,8 @@ class RouteController extends Controller
     {
         $data = $request->validate([
             'name'               => 'required|string|max:255',
+            'code'               => 'nullable|string|max:20',
+            'shift'              => 'nullable|in:day,night',
             'description'        => 'nullable|string',
             'zone'               => 'nullable|string|max:100',
             'active'             => 'boolean',
@@ -160,6 +166,8 @@ class RouteController extends Controller
     {
         $data = $request->validate([
             'name'        => 'sometimes|string|max:255',
+            'code'        => 'nullable|string|max:20',
+            'shift'       => 'nullable|in:day,night',
             'description' => 'nullable|string',
             'zone'        => 'nullable|string|max:100',
             'active'      => 'boolean',
@@ -352,9 +360,13 @@ class RouteController extends Controller
         return [
             'id'           => $route->id,
             'name'         => $route->name,
+            'code'         => $route->code,
             'description'  => $route->description,
             'zone'         => $route->zone,
+            'shift'        => $route->shift,
             'active'       => $route->active,
+            'has_geometry' => $route->geometry_source !== null,
+            'distance_m'   => $route->distance_m,
             'total_points' => $route->points->count(),
             'schedule'     => $route->schedules->map(fn (Schedule $s) => [
                 'day'        => $s->day_of_week,

@@ -206,7 +206,8 @@ class PublicController extends Controller
             'route:id,name,zone',
         ])
             ->where('tracking_date', today())
-            ->where('status', '!=', 'completed')
+            ->whereNotNull('run_id')
+            ->whereNotIn('status', ['completed', 'idle'])
             ->whereNotNull('current_latitude')
             ->orderBy('last_seen_at', 'desc')
             ->get()
@@ -221,6 +222,7 @@ class PublicController extends Controller
                 'latitude'     => $s->current_latitude,
                 'longitude'    => $s->current_longitude,
                 'status'       => $s->status,
+                'progress'     => $s->progress,
                 'last_seen_at' => $s->last_seen_at?->toIso8601String(),
             ]);
 

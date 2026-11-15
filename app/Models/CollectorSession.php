@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -24,9 +25,16 @@ class CollectorSession extends Model
     protected $fillable = [
         'collector_id',
         'route_id',
+        'run_id',
         'tracking_date',
         'current_latitude',
         'current_longitude',
+        'along_m',
+        'segment_index',
+        'progress',
+        'distance_to_route_m',
+        'off_route',
+        'off_route_count',
         'status',
         'started_at',
         'last_seen_at',
@@ -38,7 +46,7 @@ class CollectorSession extends Model
     protected function casts(): array
     {
         return [
-            'tracking_date'      => 'date',
+            'tracking_date'      => DateOnly::class,
             'started_at'         => 'datetime',
             'last_seen_at'       => 'datetime',
             'last_broadcast_at'  => 'datetime',
@@ -46,7 +54,18 @@ class CollectorSession extends Model
             'current_longitude'  => 'float',
             'last_broadcast_lat' => 'float',
             'last_broadcast_lng' => 'float',
+            'along_m'            => 'integer',
+            'segment_index'      => 'integer',
+            'progress'           => 'float',
+            'distance_to_route_m'=> 'float',
+            'off_route'          => 'boolean',
+            'off_route_count'    => 'integer',
         ];
+    }
+
+    public function run(): BelongsTo
+    {
+        return $this->belongsTo(RouteRun::class, 'run_id');
     }
 
     public function collector(): BelongsTo

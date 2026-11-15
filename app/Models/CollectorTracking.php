@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DateOnly;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,6 +13,7 @@ class CollectorTracking extends Model
     protected $fillable = [
         'collector_id',
         'route_id',
+        'run_id',
         'latitude',
         'longitude',
         'accuracy',
@@ -24,7 +26,7 @@ class CollectorTracking extends Model
     protected function casts(): array
     {
         return [
-            'tracking_date' => 'date',
+            'tracking_date' => DateOnly::class,
             'recorded_at'   => 'datetime',
             'latitude'      => 'float',
             'longitude'     => 'float',

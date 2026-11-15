@@ -15,18 +15,56 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Route extends Model
 {
+    public const SHIFTS = ['day', 'night'];
+
     protected $fillable = [
         'name',
+        'code',
         'description',
         'zone',
+        'shift',
         'active',
+        'geometry',
+        'geometry_source',
+        'distance_m',
     ];
+
+    // El trazado pesa varios KB: solo lo devuelven los endpoints de geometría
+    protected $hidden = ['geometry'];
 
     protected function casts(): array
     {
         return [
-            'active' => 'boolean',
+            'active'     => 'boolean',
+            'geometry'   => 'array',
+            'distance_m' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (Route $route) {
+            if ($route->wasChanged('geometry')) {
+                \App\Services\RouteGeometryService::forget($route->id);
+            }
+        });
+
+        static::deleted(fn (Route $route) => \App\Services\RouteGeometryService::forget($route->id));
+    }
+
+    public function hasGeometry(): bool
+    {
+        return !empty($this->geometry['coordinates']) && count($this->geometry['coordinates']) >= 2;
+    }
+
+    public function runs(): HasMany
+    {
+        return $this->hasMany(RouteRun::class);
+    }
+
+    public function locationMatches(): HasMany
+    {
+        return $this->hasMany(LocationRouteMatch::class);
     }
 
     public function points(): HasMany
