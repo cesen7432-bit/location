@@ -9,6 +9,7 @@ use App\Models\Route;
 use App\Models\RouteRun;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 use function Illuminate\Support\defer;
@@ -22,6 +23,12 @@ class CollectorTrackingService
     public const MAX_PROGRESS_ACCURACY_M = 50;
 
     public const DEVICE_LOCATION_MAX_AGE_MIN = 10;
+
+    // ping_count y max_progress del recorrido se actualizan como mucho cada tanto, no en cada ping
+    public const RUN_SYNC_INTERVAL_S = 30;
+
+    // Pings a menos de esta distancia del último guardado (camión detenido) no se guardan
+    public const MIN_MOVE_M = 2;
 
     public function __construct(
         private readonly RouteGeometryService $geometry,
@@ -47,20 +54,7 @@ class CollectorTrackingService
         // route_id explícito solo se respeta si no hay recorrido (clientes antiguos)
         $routeId = $run?->route_id ?? (isset($data['route_id']) ? (int) $data['route_id'] : null);
 
-        CollectorTracking::create([
-            'collector_id'  => $collector->id,
-            'route_id'      => $routeId,
-            'run_id'        => $run?->id,
-            'latitude'      => $lat,
-            'longitude'     => $lng,
-            'accuracy'      => $data['accuracy'] ?? null,
-            'tracking_date' => $now->toDateString(),
-            'recorded_at'   => $now,
-        ]);
-
-        if ($run) {
-            $run->increment('ping_count');
-        }
+        $stored = $this->storePing($collector->id, $routeId, $run?->id, $lat, $lng, $data['accuracy'] ?? null, $now);
 
         $session = CollectorSession::firstOrNew([
             'collector_id'  => $collector->id,
@@ -112,34 +106,42 @@ class CollectorTrackingService
                 ]);
 
                 if ($projection['progress'] > (float) $run->max_progress) {
-                    $run->forceFill(['max_progress' => $projection['progress']])->saveQuietly();
+                    $this->syncRun($run, $projection['progress']);
                 }
             }
         }
 
         $session->save();
 
-        $broadcasted = $this->broadcast($collector, $session, $run, $now);
+        $notify = $run && $projection && !$session->off_route
+            && $projection['distance_m'] <= RouteGeometryService::OFF_ROUTE_DISTANCE_M;
+        $along = (float) $session->along_m;
 
-        // Se ejecuta después de enviar la respuesta al dispositivo
-        if ($run && $projection && !$session->off_route
-            && $projection['distance_m'] <= RouteGeometryService::OFF_ROUTE_DISTANCE_M) {
-            $along = (float) $session->along_m;
+        // Después de responder al dispositivo: el WebSocket no lo hace esperar
+        defer(function () use ($collector, $session, $run, $now, $notify, $along, $previousAlong) {
+            // Libera la conexión mientras se espera al servicio de WebSocket
+            if (DB::getDriverName() !== 'sqlite') {
+                DB::disconnect();
+            }
 
-            defer(function () use ($run, $collector, $along, $previousAlong) {
-                try {
-                    $run->loadMissing('route:id,name');
-                    $this->notifier->notifyApproaching($run, $collector, $along);
-                    $this->notifier->markCollected($run, $previousAlong, $along);
-                } catch (\Throwable $e) {
-                    report($e);
-                }
-            });
-        }
+            $this->broadcast($collector, $session, $run, $now);
+
+            if (!$notify) {
+                return;
+            }
+
+            try {
+                $run->loadMissing('route:id,name');
+                $this->notifier->notifyApproaching($run, $collector, $along);
+                $this->notifier->markCollected($run, $previousAlong, $along);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
 
         return [
             'recorded'   => true,
-            'broadcast'  => $broadcasted,
+            'stored'     => $stored,
             'session_id' => $session->id,
             'run_id'     => $run?->id,
             'route_id'   => $routeId,
@@ -164,18 +166,54 @@ class CollectorTrackingService
                 'last_seen_at'   => $now->toIso8601String(),
             ]));
 
-            $session->forceFill([
-                'last_broadcast_lat' => $session->current_latitude,
-                'last_broadcast_lng' => $session->current_longitude,
-                'last_broadcast_at'  => $now,
-            ])->saveQuietly();
-
             return true;
         } catch (\Throwable $e) {
             report($e);
 
             return false;
         }
+    }
+
+    /** Guarda el ping salvo que el camión siga en el mismo lugar que el último punto guardado. */
+    private function storePing(int $collectorId, ?int $routeId, ?int $runId, float $lat, float $lng, ?float $accuracy, CarbonInterface $now): bool
+    {
+        $cache = Cache::store(config('cache.hot_store'));
+        $key   = "last-stored-ping:{$collectorId}";
+        $date  = $now->toDateString();
+        $last  = $cache->get($key);
+
+        // Cambio de recorrido o de día: siempre se guarda para marcar el corte
+        if ($last && $last['run_id'] === $runId && $last['date'] === $date
+            && $this->simplifier->haversineMeters($last['lat'], $last['lng'], $lat, $lng) < self::MIN_MOVE_M) {
+            return false;
+        }
+
+        CollectorTracking::create([
+            'collector_id'  => $collectorId,
+            'route_id'      => $routeId,
+            'run_id'        => $runId,
+            'latitude'      => $lat,
+            'longitude'     => $lng,
+            'accuracy'      => $accuracy,
+            'tracking_date' => $date,
+            'recorded_at'   => $now,
+        ]);
+
+        $cache->put($key, ['lat' => $lat, 'lng' => $lng, 'run_id' => $runId, 'date' => $date], now()->addDay());
+
+        return true;
+    }
+
+    private function syncRun(RouteRun $run, float $progress): void
+    {
+        if (!Cache::store(config('cache.hot_store'))->add("run-sync:{$run->id}", 1, self::RUN_SYNC_INTERVAL_S)) {
+            return;
+        }
+
+        $run->forceFill([
+            'max_progress' => $progress,
+            'ping_count'   => $run->pings()->count(),
+        ])->saveQuietly();
     }
 
     public function startRun(User $collector, Route $route, ?float $lat, ?float $lng, ?string $notes): RouteRun
@@ -229,6 +267,8 @@ class CollectorTrackingService
 
         $endedAt = $closedBy === 'admin' && $lastPing ? $lastPing->recorded_at : now();
 
+        $lastProgress = CollectorSession::where('run_id', $run->id)->max('progress');
+
         $run->update([
             'status'        => RouteRun::COMPLETED,
             'ended_at'      => $endedAt,
@@ -237,6 +277,7 @@ class CollectorTrackingService
             'end_source'    => $source,
             'closed_by'     => $closedBy,
             'ping_count'    => $run->pings()->count(),
+            'max_progress'  => max((float) $run->max_progress, (float) $lastProgress),
             'distance_m'    => (int) round($this->runDistance($run)),
             'notes'         => $notes !== null ? trim(($run->notes ? $run->notes . "\n" : '') . $notes) : $run->notes,
         ]);
@@ -267,12 +308,16 @@ class CollectorTrackingService
             return [$lat, $lng, 'app'];
         }
 
-        $ping = CollectorTracking::where('collector_id', $collectorId)
-            ->where('recorded_at', '>=', now()->subMinutes(self::DEVICE_LOCATION_MAX_AGE_MIN))
-            ->latest('recorded_at')->latest('id')
+        // La sesión tiene la última posición aunque el ping no se haya guardado por estar detenido
+        $session = CollectorSession::where('collector_id', $collectorId)
+            ->where('last_seen_at', '>=', now()->subMinutes(self::DEVICE_LOCATION_MAX_AGE_MIN))
+            ->whereNotNull('current_latitude')
+            ->latest('last_seen_at')
             ->first();
 
-        return $ping ? [$ping->latitude, $ping->longitude, 'device'] : [null, null, null];
+        return $session
+            ? [$session->current_latitude, $session->current_longitude, 'device']
+            : [null, null, null];
     }
 
     public function runDistance(RouteRun $run): float

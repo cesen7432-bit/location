@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
@@ -61,6 +63,45 @@ class ApiKey extends Model
     public static function hashKey(string $plain): string
     {
         return hash('sha256', $plain);
+    }
+
+    // Desactivar al recolector tarda hasta este tiempo en bloquear sus pings
+    public const CACHE_TTL_S = 60;
+
+    protected static function booted(): void
+    {
+        $forget = fn (ApiKey $key) => self::cacheStore()->forget(self::cacheKey($key->key_hash));
+
+        static::saved($forget);
+        static::deleted($forget);
+    }
+
+    public static function cacheStore(): Repository
+    {
+        return Cache::store(config('cache.hot_store'));
+    }
+
+    public static function cacheKey(string $hash): string
+    {
+        return "api-key:{$hash}";
+    }
+
+    /** Busca la key por su hash; las inexistentes no se guardan para no llenar la caché. */
+    public static function cached(string $hash): ?self
+    {
+        $store = self::cacheStore();
+
+        if ($key = $store->get(self::cacheKey($hash))) {
+            return $key;
+        }
+
+        $key = self::with('collector')->where('key_hash', $hash)->first();
+
+        if ($key) {
+            $store->put(self::cacheKey($hash), $key, self::CACHE_TTL_S);
+        }
+
+        return $key;
     }
 
     /** Assign a fresh key to this model and return the plain value (shown only once). */

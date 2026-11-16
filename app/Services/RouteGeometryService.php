@@ -33,7 +33,7 @@ class RouteGeometryService
     public static function forget(int $routeId): void
     {
         unset(self::$memo[$routeId]);
-        Cache::forget(self::cacheKey($routeId));
+        Cache::store(config('cache.hot_store'))->forget(self::cacheKey($routeId));
     }
 
     private static function cacheKey(int $routeId): string
@@ -49,7 +49,7 @@ class RouteGeometryService
             return self::$memo[$routeId];
         }
 
-        $prepared = Cache::rememberForever(self::cacheKey($routeId), function () use ($route, $routeId) {
+        $prepared = Cache::store(config('cache.hot_store'))->rememberForever(self::cacheKey($routeId), function () use ($route, $routeId) {
             $model = $route instanceof Route ? $route : Route::find($routeId);
 
             // rememberForever no guarda null: "sin trazado" se guarda como false

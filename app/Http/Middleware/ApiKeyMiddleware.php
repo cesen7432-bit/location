@@ -24,7 +24,8 @@ class ApiKeyMiddleware
             return $this->unauthorized('API key requerida (header X-API-Key)');
         }
 
-        $apiKey = ApiKey::with('collector')->where('key_hash', ApiKey::hashKey($plain))->first();
+        $hash   = ApiKey::hashKey($plain);
+        $apiKey = ApiKey::cached($hash);
 
         if (!$apiKey || !$apiKey->active) {
             return $this->unauthorized('API key inválida o inactiva');
@@ -41,6 +42,7 @@ class ApiKeyMiddleware
         // Avoid a write on every ping: refresh last_used_at at most once per minute
         if (!$apiKey->last_used_at || $apiKey->last_used_at->lt(now()->subMinute())) {
             $apiKey->forceFill(['last_used_at' => now()])->saveQuietly();
+            ApiKey::cacheStore()->put(ApiKey::cacheKey($hash), $apiKey, ApiKey::CACHE_TTL_S);
         }
 
         $request->attributes->set('api_key', $apiKey);

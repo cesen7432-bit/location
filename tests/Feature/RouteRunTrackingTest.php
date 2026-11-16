@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CollectorSession;
+use App\Models\CollectorTracking;
 use App\Models\LocationRouteMatch;
 use App\Models\PushSubscription;
 use App\Models\RouteRun;
@@ -108,6 +109,24 @@ class RouteRunTrackingTest extends TestCase
         $session = CollectorSession::where('collector_id', $this->collector->id)->first();
         $this->assertSame('idle', $session->status);
         $this->assertNull($session->route_id);
+    }
+
+    public function test_stationary_pings_are_not_stored(): void
+    {
+        $this->ping($this->apiKey, 0)->assertOk()->assertJsonPath('result.stored', true);
+        $this->ping($this->apiKey, 1)->assertOk()->assertJsonPath('result.stored', false);
+        $this->ping($this->apiKey, 1.5)->assertOk()->assertJsonPath('result.stored', false);
+        $this->ping($this->apiKey, 5)->assertOk()->assertJsonPath('result.stored', true);
+
+        $this->assertSame(2, CollectorTracking::where('collector_id', $this->collector->id)->count());
+
+        // La sesión sí sigue la última posición
+        $session = CollectorSession::where('collector_id', $this->collector->id)->first();
+        $this->assertEqualsWithDelta($this->latAt(5), $session->current_latitude, 1e-6);
+
+        // Al iniciar un recorrido el primer ping se guarda aunque el camión no se mueva
+        $this->as($this->collectorToken, 'POST', '/api/collector/runs/start', ['route_id' => $this->route->id])->assertCreated();
+        $this->ping($this->apiKey, 5)->assertOk()->assertJsonPath('result.stored', true);
     }
 
     public function test_full_run_flow(): void

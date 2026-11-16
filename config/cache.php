@@ -17,6 +17,9 @@ return [
 
     'default' => env('CACHE_STORE', 'database'),
 
+    // Datos leídos en cada ping (trazados, API keys): fuera de la base de datos
+    'hot_store' => env('CACHE_HOT_STORE', 'file'),
+
     /*
     |--------------------------------------------------------------------------
     | Cache Stores
