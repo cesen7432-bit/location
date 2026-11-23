@@ -49,7 +49,10 @@ class Route extends Model
             }
         });
 
-        static::deleted(fn (Route $route) => \App\Services\RouteGeometryService::forget($route->id));
+        static::deleted(function (Route $route) {
+            \App\Services\RouteGeometryService::forget($route->id);
+            \App\Services\RouteWaypointService::forget($route->id);
+        });
     }
 
     public function hasGeometry(): bool
@@ -70,6 +73,11 @@ class Route extends Model
     public function points(): HasMany
     {
         return $this->hasMany(RoutePoint::class)->orderBy('sequence');
+    }
+
+    public function waypoints(): HasMany
+    {
+        return $this->hasMany(RouteWaypoint::class)->orderBy('sequence');
     }
 
     public function schedules(): HasMany

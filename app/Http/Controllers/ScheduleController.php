@@ -14,6 +14,8 @@ class ScheduleController extends Controller
 
     private const DAY_RULE = 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday';
 
+    private const WASTE_RULE = 'nullable|in:organic,inorganic,both';
+
     /**
      * @OA\Get(
      *     path="/api/admin/routes/{route}/schedules",
@@ -38,6 +40,7 @@ class ScheduleController extends Controller
      *                     @OA\Property(property="schedule_id",  type="integer", nullable=true, example=3),
      *                     @OA\Property(property="start_time",   type="string",  nullable=true, example="07:00"),
      *                     @OA\Property(property="end_time",     type="string",  nullable=true, example="09:00"),
+     *                     @OA\Property(property="waste_type",   type="string",  nullable=true, enum={"organic","inorganic","both"}),
      *                     @OA\Property(property="active",       type="boolean", example=true),
      *                     @OA\Property(property="configured",   type="boolean", example=true)
      *                 ))
@@ -62,6 +65,7 @@ class ScheduleController extends Controller
                 'schedule_id'=> $s?->id,
                 'start_time' => $s?->start_time,
                 'end_time'   => $s?->end_time,
+                'waste_type' => $s?->waste_type,
                 'active'     => $s ? $s->active : false,
                 'configured' => $s !== null,
             ];
@@ -90,6 +94,7 @@ class ScheduleController extends Controller
      *             ),
      *             @OA\Property(property="start_time", type="string", example="07:00"),
      *             @OA\Property(property="end_time",   type="string", example="09:00", nullable=true),
+     *             @OA\Property(property="waste_type", type="string", nullable=true, enum={"organic","inorganic","both"}),
      *             @OA\Property(property="active",     type="boolean", example=true)
      *         )
      *     ),
@@ -109,17 +114,11 @@ class ScheduleController extends Controller
             'day_of_week' => ['required', self::DAY_RULE],
             'start_time'  => 'required|date_format:H:i',
             'end_time'    => 'nullable|date_format:H:i|after:start_time',
+            'waste_type'  => self::WASTE_RULE,
             'active'      => 'boolean',
         ]);
 
-        $schedule = Schedule::updateOrCreate(
-            ['route_id' => $route->id, 'day_of_week' => $data['day_of_week']],
-            [
-                'start_time' => $data['start_time'],
-                'end_time'   => $data['end_time'] ?? null,
-                'active'     => $data['active'] ?? true,
-            ]
-        );
+        $schedule = $this->upsertDay($route, $data);
 
         return $this->created($this->formatSchedule($schedule), 'Horario configurado');
     }
@@ -144,6 +143,7 @@ class ScheduleController extends Controller
      *                     ),
      *                     @OA\Property(property="start_time", type="string", example="07:00"),
      *                     @OA\Property(property="end_time",   type="string", example="09:00", nullable=true),
+     *                     @OA\Property(property="waste_type", type="string", nullable=true, enum={"organic","inorganic","both"}),
      *                     @OA\Property(property="active",     type="boolean", example=true)
      *                 )
      *             )
@@ -171,6 +171,7 @@ class ScheduleController extends Controller
             'days.*.day_of_week'  => ['required', self::DAY_RULE],
             'days.*.start_time'   => 'required|date_format:H:i',
             'days.*.end_time'     => 'nullable|date_format:H:i',
+            'days.*.waste_type'   => self::WASTE_RULE,
             'days.*.active'       => 'boolean',
         ]);
 
@@ -180,17 +181,7 @@ class ScheduleController extends Controller
             return $this->error('El payload contiene días duplicados', null, 422);
         }
 
-        $saved = collect($data['days'])->map(function (array $day) use ($route) {
-            $schedule = Schedule::updateOrCreate(
-                ['route_id' => $route->id, 'day_of_week' => $day['day_of_week']],
-                [
-                    'start_time' => $day['start_time'],
-                    'end_time'   => $day['end_time'] ?? null,
-                    'active'     => $day['active'] ?? true,
-                ]
-            );
-            return $this->formatSchedule($schedule);
-        });
+        $saved = collect($data['days'])->map(fn (array $day) => $this->formatSchedule($this->upsertDay($route, $day)));
 
         return $this->success([
             'route'          => ['id' => $route->id, 'name' => $route->name],
@@ -212,6 +203,7 @@ class ScheduleController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="start_time", type="string",  example="08:00"),
      *             @OA\Property(property="end_time",   type="string",  example="10:00", nullable=true),
+     *             @OA\Property(property="waste_type", type="string",  nullable=true, enum={"organic","inorganic","both"}),
      *             @OA\Property(property="active",     type="boolean", example=true)
      *         )
      *     ),
@@ -232,6 +224,7 @@ class ScheduleController extends Controller
         $data = $request->validate([
             'start_time' => 'sometimes|date_format:H:i',
             'end_time'   => 'nullable|date_format:H:i|after:start_time',
+            'waste_type' => self::WASTE_RULE,
             'active'     => 'boolean',
         ]);
 
@@ -284,6 +277,7 @@ class ScheduleController extends Controller
      *                     ),
      *                     @OA\Property(property="start_time", type="string", example="07:00"),
      *                     @OA\Property(property="end_time",   type="string", example="09:00", nullable=true),
+     *                     @OA\Property(property="waste_type", type="string", nullable=true, enum={"organic","inorganic","both"}),
      *                     @OA\Property(property="active",     type="boolean", example=true)
      *                 )
      *             )
@@ -311,6 +305,7 @@ class ScheduleController extends Controller
             'days.*.day_of_week' => ['required', self::DAY_RULE],
             'days.*.start_time'  => 'required|date_format:H:i',
             'days.*.end_time'    => 'nullable|date_format:H:i|after:days.*.start_time',
+            'days.*.waste_type'  => self::WASTE_RULE,
             'days.*.active'      => 'boolean',
         ]);
 
@@ -322,23 +317,32 @@ class ScheduleController extends Controller
         // Delete days not present in the new payload
         $route->schedules()->whereNotIn('day_of_week', $submitted)->delete();
 
-        $saved = collect($data['days'])->map(function (array $day) use ($route) {
-            $schedule = Schedule::updateOrCreate(
-                ['route_id' => $route->id, 'day_of_week' => $day['day_of_week']],
-                [
-                    'start_time' => $day['start_time'],
-                    'end_time'   => $day['end_time'] ?? null,
-                    'active'     => $day['active'] ?? true,
-                ]
-            );
-            return $this->formatSchedule($schedule);
-        });
+        $saved = collect($data['days'])->map(fn (array $day) => $this->formatSchedule($this->upsertDay($route, $day)));
 
         return $this->success([
             'route'           => ['id' => $route->id, 'name' => $route->name],
             'days_configured' => $saved->count(),
             'schedules'       => $saved,
         ], 'Horario semanal reemplazado');
+    }
+
+    private function upsertDay(Route $route, array $day): Schedule
+    {
+        $values = [
+            'start_time' => $day['start_time'],
+            'end_time'   => $day['end_time'] ?? null,
+            'active'     => $day['active'] ?? true,
+        ];
+
+        // Si no se envía, se conserva el tipo de residuo que ya tenía el día
+        if (array_key_exists('waste_type', $day)) {
+            $values['waste_type'] = $day['waste_type'];
+        }
+
+        return Schedule::updateOrCreate(
+            ['route_id' => $route->id, 'day_of_week' => $day['day_of_week']],
+            $values
+        );
     }
 
     private function formatSchedule(Schedule $s): array
@@ -350,6 +354,7 @@ class ScheduleController extends Controller
             'day_name'    => Schedule::DAYS_ES[$s->day_of_week],
             'start_time'  => $s->start_time,
             'end_time'    => $s->end_time,
+            'waste_type'  => $s->waste_type,
             'active'      => $s->active,
         ];
     }

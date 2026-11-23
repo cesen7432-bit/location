@@ -11,6 +11,7 @@ use App\Services\RouteSimplificationService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class PublicController extends Controller
 {
@@ -82,12 +83,7 @@ class PublicController extends Controller
             'description'  => $route->description,
             'zone'         => $route->zone,
             'total_points' => $route->points_count,
-            'schedule'     => $route->schedules->map(fn (Schedule $s) => [
-                'day'        => $s->day_of_week,
-                'day_name'   => Schedule::DAYS_ES[$s->day_of_week],
-                'start_time' => $s->start_time,
-                'end_time'   => $s->end_time,
-            ]),
+            'schedule'     => $route->schedules->map(fn (Schedule $s) => $s->toDayApi()),
         ]);
 
         return $this->success($routes);
@@ -107,17 +103,23 @@ class PublicController extends Controller
      *         @OA\JsonContent(allOf={@OA\Schema(ref="#/components/schemas/ApiResponse")},
      *             @OA\Property(property="data", type="object",
      *                 @OA\Property(property="neighborhood", ref="#/components/schemas/Neighborhood"),
-     *                 @OA\Property(property="collection_days", type="array", @OA\Items(type="string", example="monday")),
+     *                 @OA\Property(property="collection_days", type="array", @OA\Items(
+     *                     @OA\Property(property="day",        type="string", example="monday"),
+     *                     @OA\Property(property="day_name",   type="string", example="Lunes"),
+     *                     @OA\Property(property="waste_type", type="string", nullable=true, enum={"organic","inorganic","both"})
+     *                 )),
      *                 @OA\Property(property="weekly_schedule", type="object",
      *                     @OA\AdditionalProperties(type="object",
      *                         @OA\Property(property="day_name",       type="string",  example="Lunes"),
      *                         @OA\Property(property="has_collection", type="boolean", example=true),
+     *                         @OA\Property(property="waste_type",     type="string",  nullable=true, enum={"organic","inorganic","both"}),
      *                         @OA\Property(property="routes",         type="array",   @OA\Items(
      *                             @OA\Property(property="route_id",   type="integer", example=1),
      *                             @OA\Property(property="route_name", type="string",  example="Ruta Sur #1"),
      *                             @OA\Property(property="zone",       type="string",  example="Sur", nullable=true),
      *                             @OA\Property(property="start_time", type="string",  example="07:00"),
-     *                             @OA\Property(property="end_time",   type="string",  example="09:00", nullable=true)
+     *                             @OA\Property(property="end_time",   type="string",  example="09:00", nullable=true),
+     *                             @OA\Property(property="waste_type", type="string",  nullable=true, enum={"organic","inorganic","both"})
      *                         ))
      *                     )
      *                 )
@@ -157,13 +159,15 @@ class PublicController extends Controller
                         'zone'       => $r->zone,
                         'start_time' => $schedule->start_time,
                         'end_time'   => $schedule->end_time,
+                        'waste_type' => $schedule->waste_type,
                     ];
                 })->values();
 
             return [$day => [
-                'day_name' => Schedule::DAYS_ES[$day],
+                'day_name'       => Schedule::DAYS_ES[$day],
                 'has_collection' => $routesOnDay->isNotEmpty(),
-                'routes'   => $routesOnDay,
+                'waste_type'     => $this->combineWasteTypes($routesOnDay->pluck('waste_type')),
+                'routes'         => $routesOnDay,
             ]];
         });
 
@@ -177,7 +181,12 @@ class PublicController extends Controller
                 'longitude'    => $neighborhood->longitude,
             ],
             'weekly_schedule' => $byDay,
-            'collection_days' => $byDay->filter(fn ($d) => $d['has_collection'])->keys()->values(),
+            'collection_days' => $byDay->filter(fn ($d) => $d['has_collection'])
+                ->map(fn ($d, $day) => [
+                    'day'        => $day,
+                    'day_name'   => $d['day_name'],
+                    'waste_type' => $d['waste_type'],
+                ])->values(),
         ]);
     }
 
@@ -285,12 +294,7 @@ class PublicController extends Controller
                 'id'       => $route->id,
                 'name'     => $route->name,
                 'zone'     => $route->zone,
-                'schedule' => $route->schedules->map(fn (Schedule $s) => [
-                    'day'        => $s->day_of_week,
-                    'day_name'   => Schedule::DAYS_ES[$s->day_of_week],
-                    'start_time' => $s->start_time,
-                    'end_time'   => $s->end_time,
-                ]),
+                'schedule' => $route->schedules->map(fn (Schedule $s) => $s->toDayApi()),
             ],
             'points' => $route->points->map(fn ($p) => [
                 'sequence'     => $p->sequence,
@@ -370,5 +374,17 @@ class PublicController extends Controller
             'raw_count'    => $pings->count(),
             'last_ping_at' => $lastPing->recorded_at->toIso8601String(),
         ]);
+    }
+
+    /** Tipo de residuo del día cuando pasan varias rutas: si difieren, son ambos. */
+    private function combineWasteTypes(Collection $types): ?string
+    {
+        $types = $types->filter()->unique()->values();
+
+        return match (true) {
+            $types->isEmpty()  => null,
+            $types->count() === 1 => $types->first(),
+            default            => 'both',
+        };
     }
 }

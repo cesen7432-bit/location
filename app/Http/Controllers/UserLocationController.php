@@ -205,12 +205,7 @@ class UserLocationController extends Controller
                 'code'                => $m->route->code,
                 'zone'                => $m->route->zone,
                 'distance_to_route_m' => round($m->distance_m),
-                'schedule'            => $m->route->schedules->map(fn (Schedule $s) => [
-                    'day'        => $s->day_of_week,
-                    'day_name'   => Schedule::DAYS_ES[$s->day_of_week],
-                    'start_time' => $s->start_time,
-                    'end_time'   => $s->end_time,
-                ])->values(),
+                'schedule'            => $m->route->schedules->map(fn (Schedule $s) => $s->toDayApi())->values(),
             ])
             ->values();
 

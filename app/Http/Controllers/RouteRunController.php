@@ -230,6 +230,7 @@ class RouteRunController extends Controller
                 'distance_m'         => $run->distance_m ?? (int) round($this->tracking->runDistance($run)),
                 'planned_distance_m' => $run->route?->distance_m,
                 'max_progress'       => $run->max_progress,
+                'landfill_trips'     => (int) $run->landfill_trips,
                 'first_ping_at'      => $pings->first()?->recorded_at?->toIso8601String(),
                 'last_ping_at'       => $pings->last()?->recorded_at?->toIso8601String(),
             ],

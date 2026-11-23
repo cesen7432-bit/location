@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\LocationRouteMatch;
 use App\Models\PushSubscription;
 use App\Models\RouteRun;
+use App\Models\Schedule;
 use App\Models\User;
 use App\Models\UserLocation;
 use App\Notifications\CollectorNearbyNotification;
@@ -48,6 +49,11 @@ class NearbyCollectorNotifier
             return 0;
         }
 
+        $wasteType = Schedule::where('route_id', $run->route_id)
+            ->where('day_of_week', strtolower(now()->englishDayOfWeek))
+            ->value('waste_type');
+        $wasteText = $wasteType ? ' Hoy: ' . Schedule::WASTE_TYPES_ES[$wasteType] . '.' : '';
+
         $users = User::whereIn('id', $candidates->pluck('user_id')->unique())->get()->keyBy('id');
         $subscriptions = PushSubscription::whereIn('user_id', $users->keys())->get()->groupBy('user_id');
 
@@ -68,7 +74,7 @@ class NearbyCollectorNotifier
             $payload  = [
                 'type'           => 'collector_nearby',
                 'title'          => 'El recolector está cerca',
-                'body'           => "{$routeName}: el camión está a unos {$this->roundDistance($distance)} m de {$match->location_label}.",
+                'body'           => "{$routeName}: el camión está a unos {$this->roundDistance($distance)} m de {$match->location_label}.{$wasteText}",
                 'route_id'       => $run->route_id,
                 'route_name'     => $routeName,
                 'run_id'         => $run->id,
@@ -76,6 +82,7 @@ class NearbyCollectorNotifier
                 'location_id'    => $match->location_id,
                 'location_label' => $match->location_label,
                 'distance_m'     => $distance,
+                'waste_type'     => $wasteType,
             ];
 
             $users[$match->user_id]->notify(new CollectorNearbyNotification($payload));

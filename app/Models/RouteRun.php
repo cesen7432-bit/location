@@ -27,6 +27,9 @@ class RouteRun extends Model
         'ping_count',
         'distance_m',
         'max_progress',
+        'landfill_trips',
+        'detour_state',
+        'detour_started_at',
         'notes',
     ];
 
@@ -42,6 +45,8 @@ class RouteRun extends Model
             'ping_count'      => 'integer',
             'distance_m'      => 'integer',
             'max_progress'    => 'float',
+            'landfill_trips'  => 'integer',
+            'detour_started_at' => 'datetime',
         ];
     }
 
@@ -94,6 +99,7 @@ class RouteRun extends Model
             'distance_m'   => $this->distance_m,
             'ping_count'   => $this->ping_count,
             'max_progress' => $this->max_progress,
+            'landfill_trips' => (int) $this->landfill_trips,
             'closed_by'    => $this->closed_by,
             'notes'        => $this->notes,
         ];

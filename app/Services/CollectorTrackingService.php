@@ -34,6 +34,7 @@ class CollectorTrackingService
         private readonly RouteGeometryService $geometry,
         private readonly NearbyCollectorNotifier $notifier,
         private readonly RouteSimplificationService $simplifier,
+        private readonly RouteWaypointService $waypoints,
     ) {}
 
     public function activeRun(int $collectorId): ?RouteRun
@@ -84,11 +85,24 @@ class CollectorTrackingService
         ]);
 
         $projection = null;
+        $detour     = false;
         $accurate   = ($data['accuracy'] ?? null) === null || $data['accuracy'] <= self::MAX_PROGRESS_ACCURACY_M;
 
-        if ($run && $accurate && ($prepared = $this->geometry->prepared($run->route_id))) {
-            $projection = $this->geometry->project($prepared, $lat, $lng, $session->segment_index);
-            $onRoute    = $projection['distance_m'] <= RouteGeometryService::OFF_ROUTE_DISTANCE_M;
+        if ($run && $accurate) {
+            $prepared   = $this->geometry->prepared($run->route_id);
+            $projection = $prepared ? $this->geometry->project($prepared, $lat, $lng, $session->segment_index) : null;
+            $onRoute    = $projection && $projection['distance_m'] <= RouteGeometryService::OFF_ROUTE_DISTANCE_M;
+            $detour     = $this->waypoints->trackDetour($run, $lat, $lng, $onRoute);
+        }
+
+        if ($projection && $detour) {
+            // Ida y vuelta al relleno: va fuera del trazado a propósito, no es desvío ni cambia el avance
+            $session->fill([
+                'distance_to_route_m' => $projection['distance_m'],
+                'off_route_count'     => 0,
+                'off_route'           => false,
+            ]);
+        } elseif ($projection) {
             $offCount   = $onRoute ? 0 : $session->off_route_count + 1;
 
             $session->fill([
@@ -113,7 +127,7 @@ class CollectorTrackingService
 
         $session->save();
 
-        $notify = $run && $projection && !$session->off_route
+        $notify = $run && $projection && !$detour && !$session->off_route
             && $projection['distance_m'] <= RouteGeometryService::OFF_ROUTE_DISTANCE_M;
         $along = (float) $session->along_m;
 
@@ -147,6 +161,7 @@ class CollectorTrackingService
             'route_id'   => $routeId,
             'progress'   => $session->progress,
             'off_route'  => (bool) $session->off_route,
+            'on_landfill_trip' => $detour,
         ];
     }
 
@@ -163,6 +178,8 @@ class CollectorTrackingService
                 'status'         => $session->status,
                 'progress'       => $session->progress,
                 'off_route'      => (bool) $session->off_route,
+                'on_landfill_trip' => $run !== null && $run->detour_state !== null,
+                'landfill_trips' => $run ? (int) $run->landfill_trips : null,
                 'last_seen_at'   => $now->toIso8601String(),
             ]));
 
@@ -278,6 +295,8 @@ class CollectorTrackingService
             'closed_by'     => $closedBy,
             'ping_count'    => $run->pings()->count(),
             'max_progress'  => max((float) $run->max_progress, (float) $lastProgress),
+            'detour_state'      => null,
+            'detour_started_at' => null,
             'distance_m'    => (int) round($this->runDistance($run)),
             'notes'         => $notes !== null ? trim(($run->notes ? $run->notes . "\n" : '') . $notes) : $run->notes,
         ]);

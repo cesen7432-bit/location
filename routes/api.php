@@ -12,6 +12,7 @@ use App\Http\Controllers\RouteController;
 use App\Http\Controllers\RouteGeometryController;
 use App\Http\Controllers\RouteRecordingController;
 use App\Http\Controllers\RouteRunController;
+use App\Http\Controllers\RouteWaypointController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\UserLocationController;
 use Illuminate\Support\Facades\Route;
@@ -139,6 +140,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::put('geometry', [RouteGeometryController::class, 'store']);
         Route::post('geometry/from-tracking', [RouteGeometryController::class, 'fromTracking']);
         Route::delete('geometry', [RouteGeometryController::class, 'destroy']);
+
+        // Puntos especiales: inicio, pausas, relleno sanitario, reanudaciones y fin
+        Route::get('waypoints', [RouteWaypointController::class, 'index']);
+        Route::put('waypoints', [RouteWaypointController::class, 'update']);
 
         Route::post('recordings', [RouteRecordingController::class, 'startForRoute']);
 

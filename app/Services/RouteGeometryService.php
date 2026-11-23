@@ -355,7 +355,8 @@ class RouteGeometryService
 
     public function summary(Route $route): array
     {
-        $path = $this->path($route);
+        $path      = $this->path($route);
+        $waypoints = $route->waypoints()->get();
 
         return [
             'route'            => ['id' => $route->id, 'name' => $route->name, 'code' => $route->code],
@@ -365,6 +366,8 @@ class RouteGeometryService
             'served_locations' => $route->locationMatches()->count(),
             'updated_at'       => $route->updated_at?->toIso8601String(),
             'path'             => $path,
+            'waypoints'        => $waypoints->map(fn ($w) => $w->toApi())->values(),
+            'landfill_trips'   => $waypoints->where('type', 'landfill')->count(),
         ];
     }
 

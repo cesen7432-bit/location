@@ -43,7 +43,8 @@ class RouteController extends Controller
      */
     public function index(): JsonResponse
     {
-        $routes = Route::withCount('points')->with('schedules')->get()->map(fn (Route $r) => [
+        $routes = Route::withCount(['points', 'waypoints as landfill_trips' => fn ($q) => $q->where('type', 'landfill')])
+            ->with('schedules')->get()->map(fn (Route $r) => [
             'id'           => $r->id,
             'name'         => $r->name,
             'code'         => $r->code,
@@ -55,6 +56,7 @@ class RouteController extends Controller
             'distance_m'   => $r->distance_m,
             'total_points' => $r->points_count,
             'schedule_days'=> $r->schedules->where('active', true)->pluck('day_of_week')->values(),
+            'landfill_trips' => (int) $r->landfill_trips,
         ]);
 
         return $this->success($routes);
@@ -392,12 +394,8 @@ class RouteController extends Controller
             'has_geometry' => $route->geometry_source !== null,
             'distance_m'   => $route->distance_m,
             'total_points' => $route->points->count(),
-            'schedule'     => $route->schedules->map(fn (Schedule $s) => [
-                'day'        => $s->day_of_week,
-                'day_name'   => Schedule::DAYS_ES[$s->day_of_week],
-                'start_time' => $s->start_time,
-                'end_time'   => $s->end_time,
-            ]),
+            'landfill_trips' => $route->waypoints()->where('type', 'landfill')->count(),
+            'schedule'     => $route->schedules->map(fn (Schedule $s) => $s->toDayApi()),
             'points' => $route->points->map(fn ($p) => [
                 'id'       => $p->id,
                 'sequence' => $p->sequence,

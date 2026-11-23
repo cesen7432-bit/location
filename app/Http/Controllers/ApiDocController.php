@@ -72,6 +72,7 @@ namespace App\Http\Controllers;
  *     @OA\Property(property="day_name",    type="string",  example="Lunes"),
  *     @OA\Property(property="start_time",  type="string",  example="07:00"),
  *     @OA\Property(property="end_time",    type="string",  example="09:00", nullable=true),
+ *     @OA\Property(property="waste_type",  type="string",  nullable=true, enum={"organic","inorganic","both"}),
  *     @OA\Property(property="active",      type="boolean", example=true)
  * )
  *
